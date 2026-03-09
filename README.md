@@ -119,10 +119,14 @@ cd movie-stats
 
 ### 2. Configure API Keys
 
+Run the interactive setup script — it will prompt for each key and save them to `web/backend/.env`:
+
 ```bash
-cp .env.example web/backend/.env
-# Edit web/backend/.env and paste your keys
+python setup.py
 ```
+
+- **TMDB API key** is required
+- fanart.tv, Trakt, and Plex are optional — press Enter to skip
 
 ### 3. Set Up Python Virtual Environment
 
