@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Film, Library, Search, Upload, Settings } from 'lucide-react'
+import { Film, Library, Search, Upload, Settings, FlaskConical } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { getKeyStatus } from '../lib/api'
 
@@ -40,6 +40,9 @@ export default function Layout() {
           </NavLink>
           <NavLink to="/import" className={NAV_LINK_CLASS}>
             <Upload className="w-4 h-4" /> Import
+          </NavLink>
+          <NavLink to="/test" className={NAV_LINK_CLASS}>
+            <FlaskConical className="w-4 h-4" /> Test Match
           </NavLink>
           <NavLink to="/settings" className={NAV_LINK_CLASS}>
             <Settings className="w-4 h-4" />
