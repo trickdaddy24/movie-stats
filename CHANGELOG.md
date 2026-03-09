@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0] - 2026-03-08
+
+### Added
+- Bulk import from TMDB Lists (by list ID or URL)
+- Bulk import from Trakt.tv (user lists and watchlists)
+- Bulk import from Plex Media Server (via local API + Plex token)
+- `/api/import/*` router with preview + import endpoints for all three sources
+- Import page with three-tab UI — TMDB List, Trakt, Plex
+- Import result summary (imported / skipped / failed counts)
+- `trakt.py` — Trakt API v2 client
+- `plex.py` — Plex Media Server API client with GUID parsing
+
 ## [1.0.0] - 2026-03-08
 
 ### Added

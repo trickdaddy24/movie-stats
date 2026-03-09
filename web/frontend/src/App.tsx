@@ -4,6 +4,7 @@ import Layout from './components/Layout'
 import Library from './pages/Library'
 import Search from './pages/Search'
 import MovieDetail from './pages/MovieDetail'
+import Import from './pages/Import'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="/library" element={<Library />} />
             <Route path="/search" element={<Search />} />
             <Route path="/movies/:id" element={<MovieDetail />} />
+            <Route path="/import" element={<Import />} />
           </Route>
         </Routes>
       </BrowserRouter>

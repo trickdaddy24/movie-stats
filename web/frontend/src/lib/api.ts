@@ -115,3 +115,78 @@ export function deleteMovie(id: number): Promise<{ success: boolean }> {
 export function refreshArtwork(id: number): Promise<{ success: boolean; artwork: ArtworkItem[] }> {
   return api.get(`/movies/${id}/artwork/refresh`).then((r) => r.data)
 }
+
+// ---------------------------------------------------------------------------
+// Import types
+// ---------------------------------------------------------------------------
+
+export interface ImportPreviewMovie {
+  tmdb_id: number | null
+  title: string
+  year?: number | string | null
+  poster_url?: string
+}
+
+export interface TMDBListPreview {
+  list_name: string
+  description: string
+  total: number
+  movies: ImportPreviewMovie[]
+}
+
+export interface TraktPreview {
+  total: number
+  movies: ImportPreviewMovie[]
+}
+
+export interface PlexPreview {
+  total: number
+  movies: ImportPreviewMovie[]
+}
+
+export interface PlexLibrary {
+  key: string
+  title: string
+  type: string
+}
+
+export interface ImportResult {
+  imported: number
+  skipped: number
+  failed: number
+  errors: string[]
+}
+
+// ---------------------------------------------------------------------------
+// Import API functions
+// ---------------------------------------------------------------------------
+
+export function previewTMDBList(listId: string): Promise<TMDBListPreview> {
+  return api.get(`/import/tmdb-list/${encodeURIComponent(listId)}`).then((r) => r.data)
+}
+
+export function importTMDBList(listId: string): Promise<ImportResult> {
+  return api.post(`/import/tmdb-list/${encodeURIComponent(listId)}`).then((r) => r.data)
+}
+
+export function previewTrakt(username: string, listSlug?: string): Promise<TraktPreview> {
+  const params: Record<string, string> = { username }
+  if (listSlug) params.list_slug = listSlug
+  return api.get('/import/trakt/preview', { params }).then((r) => r.data)
+}
+
+export function importTrakt(username: string, listSlug?: string): Promise<ImportResult> {
+  return api.post('/import/trakt', { username, list_slug: listSlug || null }).then((r) => r.data)
+}
+
+export function getPlexLibraries(plex_url: string, plex_token: string): Promise<PlexLibrary[]> {
+  return api.post('/import/plex/libraries', { plex_url, plex_token }).then((r) => r.data)
+}
+
+export function previewPlex(plex_url: string, plex_token: string, section_key: string): Promise<PlexPreview> {
+  return api.post('/import/plex/preview', { plex_url, plex_token, section_key }).then((r) => r.data)
+}
+
+export function importPlex(plex_url: string, plex_token: string, section_key: string): Promise<ImportResult> {
+  return api.post('/import/plex', { plex_url, plex_token, section_key }).then((r) => r.data)
+}
