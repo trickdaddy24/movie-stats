@@ -124,17 +124,51 @@ cp .env.example web/backend/.env
 # Edit web/backend/.env and paste your keys
 ```
 
-### 3. Start Backend
+### 3. Set Up Python Virtual Environment
 
+A virtual environment keeps project dependencies isolated from your system Python.
+
+**Windows:**
 ```bash
 cd web/backend
+
+# Create the virtual environment
+python -m venv venv
+
+# Activate it
+venv\Scripts\activate
+
+# Your prompt will change to show (venv) — now install dependencies
 pip install -r requirements.txt
+```
+
+**macOS / Linux:**
+```bash
+cd web/backend
+
+# Create the virtual environment
+python3 -m venv venv
+
+# Activate it
+source venv/bin/activate
+
+# Your prompt will change to show (venv) — now install dependencies
+pip install -r requirements.txt
+```
+
+> To deactivate the virtual environment at any time, run `deactivate`.
+> Always activate it again before running `python main.py` in a new terminal session.
+
+### 4. Start Backend
+
+```bash
+# Make sure your venv is active (you should see (venv) in your prompt)
 python main.py
 ```
 
 Backend → **http://localhost:8899**
 
-### 4. Start Frontend
+### 5. Start Frontend
 
 ```bash
 cd web/frontend
