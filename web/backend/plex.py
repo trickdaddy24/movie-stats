@@ -90,7 +90,7 @@ def get_library_movies(plex_url: str, plex_token: str, section_key: str) -> list
         tmdb_id = _parse_tmdb_id_from_guids(guids)
         imdb_id = _parse_imdb_id_from_guids(guids)
 
-        # Fallback: search TMDB by title + year if no tmdb GUID
+        # Fallback: search TMDB by title + year if no tmdb:// GUID present
         if not tmdb_id:
             try:
                 search_result = tmdb_client.search_movies(title, page=1)
@@ -102,20 +102,23 @@ def get_library_movies(plex_url: str, plex_token: str, section_key: str) -> list
                             cand_year = int(rd[:4])
                         except ValueError:
                             pass
+                    # prefer year-matched result, fall back to exact title match
                     if cand_year and year and cand_year == year:
-                        tmdb_id = candidate.get("tmdb_id")
+                        tmdb_id = candidate.get("id")   # TMDB search returns "id" not "tmdb_id"
                         break
                     elif candidate.get("title", "").lower() == title.lower():
-                        tmdb_id = candidate.get("tmdb_id")
+                        tmdb_id = candidate.get("id")
                         break
             except Exception:
                 pass
 
-        results.append({
-            "tmdb_id": tmdb_id,
-            "imdb_id": imdb_id,
-            "title": title,
-            "year": year,
-        })
+        # Only include movies we successfully resolved to a TMDB ID
+        if tmdb_id:
+            results.append({
+                "tmdb_id": tmdb_id,
+                "imdb_id": imdb_id,
+                "title": title,
+                "year": year,
+            })
 
     return results
