@@ -223,3 +223,22 @@ export const previewFolder = (folder_path: string, recursive = true) =>
 
 export const getImportSessions = () =>
   api.get<ImportSession[]>('/import/sessions').then((r) => r.data)
+
+// ---------------------------------------------------------------------------
+// Settings — API key status
+// ---------------------------------------------------------------------------
+
+export interface KeyStatus {
+  key: string
+  label: string
+  required: boolean
+  hint: string
+  configured: boolean
+  masked: string
+}
+
+export const getKeyStatus = () =>
+  api.get<KeyStatus[]>('/settings/keys').then((r) => r.data)
+
+export const updateKeys = (body: { updates: Record<string, string> }) =>
+  api.patch<KeyStatus[]>('/settings/keys', body).then((r) => r.data)

@@ -10,7 +10,20 @@ import logging
 import datetime
 import re
 import sys
+import os
 from pathlib import Path
+
+# ANSI colour helpers (auto-disable when not a TTY)
+_USE_COLOR = hasattr(sys.stdout, 'isatty') and sys.stdout.isatty()
+if sys.platform == "win32" and _USE_COLOR:
+    os.system("")          # enable VT100 on Windows terminal
+
+def _c(text: str, code: str) -> str:
+    return f"\033[{code}m{text}\033[0m" if _USE_COLOR else text
+
+def green(t): return _c(t, "92")
+def red(t):   return _c(t, "91")
+def dim(t):   return _c(t, "2")
 
 VERSION = "1.1.0"
 DB_FILE = "movie_db.db"
@@ -347,36 +360,36 @@ def setup_api_keys():
                     break
                 print("  ✗ Required.")
 
-    print("\n  Summary:")
+    print("\n  Summary:\n")
     for cfg in API_KEYS:
         val = values.get(cfg["key"], "")
-        display = (val[:4] + "*" * max(0, len(val) - 4)) if val else "(not set)"
+        if val:
+            display = green("✓  " + val[:4] + "*" * max(0, len(val) - 4))
+        else:
+            display = red("✗  not set")
         print(f"    {cfg['label']:<22}  {display}")
 
     confirm = input("\n  Save to .env? (yes/no): ").strip().lower()
     if confirm in ("yes", "y"):
         write_env(values)
-        print(f"  ✓ Saved to {ENV_PATH}")
+        print(f"\n  {green('✓')} Saved to {ENV_PATH}")
         logging.info("API keys updated via CLI")
     else:
-        print("  Cancelled.")
+        print(f"  {red('✗')} Cancelled.")
 
 def show_api_keys():
     existing = read_env()
-    if not existing:
-        print(f"  No .env found at {ENV_PATH}")
-        print("  Run 'Configure API Keys' to set them up.")
-        return
-    print(f"\n  Current API Keys  ({ENV_PATH})\n")
+    print(f"\n  API Key Status  —  {ENV_PATH}\n")
     for cfg in API_KEYS:
         val = existing.get(cfg["key"], "")
-        tag = "[required]" if cfg["required"] else "[optional]"
-        if val:
+        is_set = bool(val) and val not in (f"your_{cfg['key'].lower()}_here", "http://192.168.1.100:32400")
+        tag = dim("[required]") if cfg["required"] else dim("[optional]")
+        if is_set:
             masked = val[:4] + "*" * max(0, len(val) - 4)
-            status = f"✓  {masked}"
+            status = green("✓  Enabled") + dim(f"  {masked}")
         else:
-            status = "—  not set"
-        print(f"  {cfg['label']:<22} {tag:<12}  {status}")
+            status = red("✗  Not set")
+        print(f"  {cfg['label']:<22} {tag:<22}  {status}")
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
@@ -422,7 +435,7 @@ def get_display_id(prompt_text="ID (e.g. mov.001 or shw.001)") -> str:
 def cli():
     counts = count_all()
     print(f"\n=== Movie Database  v{VERSION} ===")
-    print(f"  Movies: {counts['movies']}  |  Shows: {counts['shows']}  |  Total: {counts['total']}")
+    print(f"  Movies: {green(str(counts['movies']))}  |  Shows: {green(str(counts['shows']))}  |  Total: {green(str(counts['total']))}")
 
     while True:
         has = counts["total"] > 0

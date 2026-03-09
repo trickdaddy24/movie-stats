@@ -1,7 +1,23 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Film, Library, Search, Upload } from 'lucide-react'
+import { Film, Library, Search, Upload, Settings } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { getKeyStatus } from '../lib/api'
 
-const VERSION = '1.0.0'
+const VERSION = '1.2.0'
+
+function KeyStatusDot() {
+  const { data: keys } = useQuery({ queryKey: ['settings-keys'], queryFn: getKeyStatus })
+  const allGood = keys?.filter(k => k.required).every(k => k.configured) ?? null
+  if (allGood === null) return null
+  return (
+    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${allGood ? 'bg-green-400' : 'bg-red-400'}`} />
+  )
+}
+
+const NAV_LINK_CLASS = ({ isActive }: { isActive: boolean }) =>
+  `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+    isActive ? 'bg-brand-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+  }`
 
 export default function Layout() {
   return (
@@ -16,44 +32,19 @@ export default function Layout() {
 
         {/* Nav links */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          <NavLink
-            to="/library"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-brand-600 text-white'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
-              }`
-            }
-          >
-            <Library className="w-4 h-4" />
-            Library
+          <NavLink to="/library" className={NAV_LINK_CLASS}>
+            <Library className="w-4 h-4" /> Library
           </NavLink>
-          <NavLink
-            to="/search"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-brand-600 text-white'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
-              }`
-            }
-          >
-            <Search className="w-4 h-4" />
-            Search
+          <NavLink to="/search" className={NAV_LINK_CLASS}>
+            <Search className="w-4 h-4" /> Search
           </NavLink>
-          <NavLink
-            to="/import"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-brand-600 text-white'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
-              }`
-            }
-          >
-            <Upload className="w-4 h-4" />
-            Import
+          <NavLink to="/import" className={NAV_LINK_CLASS}>
+            <Upload className="w-4 h-4" /> Import
+          </NavLink>
+          <NavLink to="/settings" className={NAV_LINK_CLASS}>
+            <Settings className="w-4 h-4" />
+            <span className="flex-1">Settings</span>
+            <KeyStatusDot />
           </NavLink>
         </nav>
 

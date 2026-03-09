@@ -8,6 +8,7 @@ load_dotenv()
 import database as db_module
 from routers import search, movies, artwork
 from routers.imports import router as imports_router
+from routers.settings import router as settings_router
 
 app = FastAPI(title="Movie Stats API", version="1.1.0")
 
@@ -23,6 +24,7 @@ app.include_router(search.router, prefix="/api")
 app.include_router(movies.router, prefix="/api")
 app.include_router(artwork.router, prefix="/api")
 app.include_router(imports_router, prefix="/api")
+app.include_router(settings_router, prefix="/api")
 
 
 @app.on_event("startup")
