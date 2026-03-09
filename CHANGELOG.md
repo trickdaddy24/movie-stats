@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.0] - 2026-03-08
+
+### Added
+- Local folder scan import — scans OS directory for movie files, parses titles/years from filenames, matches via TMDB search
+- SSE streaming progress for all import sources (TMDB List, Trakt, Plex, Folder)
+- Progress bar with percentage fill, current movie name, and live ETA countdown
+- Import log panel — live scrolling list of imported/skipped/failed movies (monospace, color-coded)
+- `import_sessions` DB table — persists import history (source, counts, log)
+- `GET /api/import/sessions` — returns recent import history
+- `scanner.py` — movie filename parser (strips codec tags, extracts year, cleans title)
+- `useImportProgress` hook — manages EventSource lifecycle and ETA calculation
+- `ImportProgress` component — reusable progress UI used across all four import tabs
+- `import.log` file logging for all import activity
+
 ## [1.1.0] - 2026-03-08
 
 ### Added

@@ -1,12 +1,39 @@
+import asyncio
+import logging
+import threading
+import time
+import uuid
 from datetime import datetime, timezone
 from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
-import tmdb
-import fanart
+from sse_starlette.sse import EventSourceResponse
+
 import database as db
-import trakt as trakt_client
+import fanart
 import plex as plex_client
+import scanner
+import tmdb
+import trakt as trakt_client
+
+# ---------------------------------------------------------------------------
+# File logging
+# ---------------------------------------------------------------------------
+
+logging.basicConfig(
+    filename="import.log",
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+)
+log = logging.getLogger("import")
+
+# ---------------------------------------------------------------------------
+# In-memory job store
+# ---------------------------------------------------------------------------
+
+_jobs: dict[str, dict] = {}
+_job_events: dict[str, list[dict]] = {}
 
 router = APIRouter(prefix="/import")
 
@@ -21,92 +48,138 @@ def _strip_tmdb_list_url(list_id: str) -> str:
     val = list_id.strip()
     if val.startswith(prefix):
         val = val[len(prefix):]
-    # strip any trailing slashes or query params
     val = val.split("/")[0].split("?")[0]
     return val
 
 
-def _import_single_movie(tmdb_id: int) -> str | None:
-    """
-    Import one movie by TMDB ID. Returns None on success, error message string on failure.
-    Caller is responsible for checking if already in DB before calling this.
-    """
-    try:
-        movie_data = tmdb.get_movie(tmdb_id)
-        fanart_art = fanart.get_movie_art_flat(tmdb_id)
-
-        save_data = {
-            "tmdb_id": movie_data["tmdb_id"],
-            "imdb_id": movie_data.get("imdb_id"),
-            "title": movie_data["title"],
-            "original_title": movie_data.get("original_title"),
-            "overview": movie_data.get("overview"),
-            "release_date": movie_data.get("release_date"),
-            "runtime": movie_data.get("runtime"),
-            "rating": movie_data.get("rating"),
-            "vote_count": movie_data.get("vote_count"),
-            "tagline": movie_data.get("tagline"),
-            "status": "active",
-            "added_at": datetime.now(timezone.utc).isoformat(),
-        }
-
-        movie_id = db.add_movie(save_data)
-        db.add_cast_crew(movie_id, movie_data.get("cast", []) + movie_data.get("crew", []))
-        db.add_genres(movie_id, movie_data.get("genres", []))
-
-        all_artwork = movie_data.get("artwork", []) + fanart_art
-        db.add_artwork(movie_id, all_artwork)
-
-        ext = movie_data.get("external_ids", {})
-        if movie_data.get("imdb_id"):
-            db.add_external_id(movie_id, "imdb", movie_data["imdb_id"])
-        db.add_external_id(movie_id, "tmdb", str(tmdb_id))
-        if ext.get("wikidata_id"):
-            db.add_external_id(movie_id, "wikidata", ext["wikidata_id"])
-        if ext.get("facebook_id"):
-            db.add_external_id(movie_id, "facebook", ext["facebook_id"])
-        if ext.get("instagram_id"):
-            db.add_external_id(movie_id, "instagram", ext["instagram_id"])
-        if ext.get("twitter_id"):
-            db.add_external_id(movie_id, "twitter", ext["twitter_id"])
-
-        return None
-    except Exception as e:
-        return str(e)
+def _new_job(source: str) -> str:
+    job_id = uuid.uuid4().hex
+    _jobs[job_id] = {"done": False, "source": source}
+    _job_events[job_id] = []
+    return job_id
 
 
-def _bulk_import(movies: list[dict]) -> dict:
-    """
-    movies: list of {tmdb_id, title, ...}
-    Returns {imported, skipped, failed, errors}
-    """
-    imported = 0
-    skipped = 0
-    failed = 0
-    errors: list[str] = []
+def _import_single_movie(tmdb_id: int) -> None:
+    """Import one movie by TMDB ID. Raises on failure."""
+    movie_data = tmdb.get_movie(tmdb_id)
+    fanart_art = fanart.get_movie_art_flat(tmdb_id)
 
-    for movie in movies:
-        tmdb_id = movie.get("tmdb_id")
-        title = movie.get("title", str(tmdb_id))
+    save_data = {
+        "tmdb_id": movie_data["tmdb_id"],
+        "imdb_id": movie_data.get("imdb_id"),
+        "title": movie_data["title"],
+        "original_title": movie_data.get("original_title"),
+        "overview": movie_data.get("overview"),
+        "release_date": movie_data.get("release_date"),
+        "runtime": movie_data.get("runtime"),
+        "rating": movie_data.get("rating"),
+        "vote_count": movie_data.get("vote_count"),
+        "tagline": movie_data.get("tagline"),
+        "status": "active",
+        "added_at": datetime.now(timezone.utc).isoformat(),
+    }
 
-        if not tmdb_id:
+    movie_id = db.add_movie(save_data)
+    db.add_cast_crew(movie_id, movie_data.get("cast", []) + movie_data.get("crew", []))
+    db.add_genres(movie_id, movie_data.get("genres", []))
+
+    all_artwork = movie_data.get("artwork", []) + fanart_art
+    db.add_artwork(movie_id, all_artwork)
+
+    ext = movie_data.get("external_ids", {})
+    if movie_data.get("imdb_id"):
+        db.add_external_id(movie_id, "imdb", movie_data["imdb_id"])
+    db.add_external_id(movie_id, "tmdb", str(tmdb_id))
+    if ext.get("wikidata_id"):
+        db.add_external_id(movie_id, "wikidata", ext["wikidata_id"])
+    if ext.get("facebook_id"):
+        db.add_external_id(movie_id, "facebook", ext["facebook_id"])
+    if ext.get("instagram_id"):
+        db.add_external_id(movie_id, "instagram", ext["instagram_id"])
+    if ext.get("twitter_id"):
+        db.add_external_id(movie_id, "twitter", ext["twitter_id"])
+
+
+def _run_import(job_id: str, movies_to_import: list[dict], source: str, source_detail: str) -> None:
+    """Generic import runner — called from threading.Thread."""
+    log_entries: list[dict] = []
+    imported = skipped = failed = 0
+    start = time.time()
+
+    _job_events[job_id].append({"type": "start", "total": len(movies_to_import), "source": source})
+
+    session_id = db.create_import_session(source, source_detail)
+
+    for i, movie in enumerate(movies_to_import, 1):
+        try:
+            tmdb_id = movie.get("tmdb_id")
+            title = movie.get("title", f"TMDB {tmdb_id}")
+
+            if not tmdb_id:
+                failed += 1
+                log.error(f"[{source}] failed: no tmdb_id for '{title}'")
+                _job_events[job_id].append({
+                    "type": "progress", "current": i, "total": len(movies_to_import),
+                    "title": title, "status": "failed",
+                })
+                log_entries.append({"title": title, "status": "failed"})
+                continue
+
+            if db.get_movie_by_tmdb_id(tmdb_id):
+                status = "skipped"
+                skipped += 1
+            else:
+                _import_single_movie(tmdb_id)
+                status = "imported"
+                imported += 1
+
+            log_entries.append({"title": title, "status": status})
+            log.info(f"[{source}] {status}: {title}")
+            _job_events[job_id].append({
+                "type": "progress", "current": i, "total": len(movies_to_import),
+                "title": title, "status": status,
+            })
+        except Exception as e:
             failed += 1
-            errors.append(f"No TMDB ID for '{title}'")
-            continue
+            title = movie.get("title", "Unknown")
+            log.error(f"[{source}] failed: {movie} — {e}")
+            _job_events[job_id].append({
+                "type": "progress", "current": i, "total": len(movies_to_import),
+                "title": title, "status": "failed",
+            })
+            log_entries.append({"title": title, "status": "failed"})
 
-        existing = db.get_movie_by_tmdb_id(tmdb_id)
-        if existing:
-            skipped += 1
-            continue
+    elapsed = round(time.time() - start, 1)
+    db.finish_import_session(session_id, imported, skipped, failed, log_entries)
+    _job_events[job_id].append({
+        "type": "done",
+        "imported": imported,
+        "skipped": skipped,
+        "failed": failed,
+        "elapsed_seconds": elapsed,
+    })
+    _jobs[job_id]["done"] = True
 
-        err = _import_single_movie(tmdb_id)
-        if err:
-            failed += 1
-            errors.append(f"'{title}' (TMDB {tmdb_id}): {err}")
-        else:
-            imported += 1
 
-    return {"imported": imported, "skipped": skipped, "failed": failed, "errors": errors}
+def _resolve_folder_movies(parsed_movies: list[dict]) -> list[dict]:
+    """Resolve parsed filenames to TMDB IDs via search."""
+    resolved = []
+    for m in parsed_movies:
+        try:
+            results = tmdb.search_movies(m["title"], page=1)
+            items = results.get("results", [])
+            if m.get("year"):
+                match = next(
+                    (r for r in items if str(r.get("release_date", ""))[:4] == str(m["year"])),
+                    None,
+                )
+            else:
+                match = items[0] if items else None
+            if match:
+                resolved.append({"tmdb_id": match["tmdb_id"], "title": match["title"]})
+        except Exception:
+            pass
+    return resolved
 
 
 # ---------------------------------------------------------------------------
@@ -129,10 +202,45 @@ class PlexPreviewBody(BaseModel):
     section_key: str
 
 
-class PlexImportBody(BaseModel):
+class PlexStartBody(BaseModel):
     plex_url: str
     plex_token: str
     section_key: str
+
+
+class FolderStartBody(BaseModel):
+    folder_path: str
+    recursive: bool = True
+
+
+class FolderPreviewBody(BaseModel):
+    folder_path: str
+    recursive: bool = True
+
+
+# ---------------------------------------------------------------------------
+# SSE progress endpoint
+# ---------------------------------------------------------------------------
+
+@router.get("/progress/{job_id}")
+async def import_progress(job_id: str):
+    """SSE stream of import progress events for a given job_id."""
+    if job_id not in _jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    async def event_generator():
+        sent = 0
+        while True:
+            events = _job_events.get(job_id, [])
+            while sent < len(events):
+                import json
+                yield {"data": json.dumps(events[sent])}
+                sent += 1
+            if _jobs[job_id]["done"] and sent >= len(_job_events.get(job_id, [])):
+                break
+            await asyncio.sleep(0.2)
+
+    return EventSourceResponse(event_generator())
 
 
 # ---------------------------------------------------------------------------
@@ -166,9 +274,9 @@ def preview_tmdb_list(list_id: str):
     }
 
 
-@router.post("/tmdb-list/{list_id}")
-def import_tmdb_list(list_id: str):
-    """Import all movies from a TMDB list into the local library."""
+@router.post("/tmdb-list/{list_id}/start")
+def start_tmdb_list_import(list_id: str):
+    """Start a streaming import from a TMDB list. Returns job_id."""
     clean_id = _strip_tmdb_list_url(list_id)
     try:
         data = tmdb._get(f"/list/{clean_id}")
@@ -180,8 +288,17 @@ def import_tmdb_list(list_id: str):
         {"tmdb_id": item.get("id"), "title": item.get("title", "")}
         for item in items
     ]
+    list_name = data.get("name", "")
 
-    return _bulk_import(movies)
+    job_id = _new_job("tmdb_list")
+    t = threading.Thread(
+        target=_run_import,
+        args=(job_id, movies, "tmdb_list", f"list:{clean_id}"),
+        daemon=True,
+    )
+    t.start()
+
+    return {"job_id": job_id, "total": len(movies), "list_name": list_name}
 
 
 # ---------------------------------------------------------------------------
@@ -214,9 +331,9 @@ def preview_trakt(
     }
 
 
-@router.post("/trakt")
-def import_trakt(body: TraktImportBody):
-    """Bulk import movies from a Trakt list or watchlist."""
+@router.post("/trakt/start")
+def start_trakt_import(body: TraktImportBody):
+    """Start a streaming import from Trakt. Returns job_id."""
     if not trakt_client.get_client_id():
         raise HTTPException(
             status_code=400,
@@ -231,7 +348,16 @@ def import_trakt(body: TraktImportBody):
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Trakt error: {e}")
 
-    return _bulk_import(movies)
+    source_detail = f"{body.username}/{body.list_slug or 'watchlist'}"
+    job_id = _new_job("trakt")
+    t = threading.Thread(
+        target=_run_import,
+        args=(job_id, movies, "trakt", source_detail),
+        daemon=True,
+    )
+    t.start()
+
+    return {"job_id": job_id, "total": len(movies)}
 
 
 # ---------------------------------------------------------------------------
@@ -271,23 +397,85 @@ def preview_plex(body: PlexPreviewBody):
     }
 
 
-@router.post("/plex")
-def import_plex(body: PlexImportBody):
-    """Bulk import all movies from a Plex library section."""
+@router.post("/plex/start")
+def start_plex_import(body: PlexStartBody):
+    """Start a streaming import from a Plex library. Returns job_id."""
     try:
         movies = plex_client.get_library_movies(body.plex_url, body.plex_token, body.section_key)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Plex error: {e}")
 
-    # Filter out any without a resolved TMDB ID
     importable = [m for m in movies if m.get("tmdb_id")]
     unresolved = [m for m in movies if not m.get("tmdb_id")]
 
-    result = _bulk_import(importable)
+    # Pre-seed unresolved as failed events so the total is accurate
+    all_movies: list[dict] = importable + [
+        {"tmdb_id": None, "title": m.get("title", "Unknown")} for m in unresolved
+    ]
 
-    if unresolved:
-        result["failed"] += len(unresolved)
-        for m in unresolved:
-            result["errors"].append(f"'{m.get('title')}': could not resolve TMDB ID")
+    job_id = _new_job("plex")
+    t = threading.Thread(
+        target=_run_import,
+        args=(job_id, all_movies, "plex", body.section_key),
+        daemon=True,
+    )
+    t.start()
 
-    return result
+    return {"job_id": job_id, "total": len(all_movies)}
+
+
+# ---------------------------------------------------------------------------
+# Folder endpoints
+# ---------------------------------------------------------------------------
+
+@router.post("/folder/preview")
+def preview_folder(body: FolderPreviewBody):
+    """Scan a local folder and return parsed movie list (no TMDB lookup)."""
+    try:
+        parsed = scanner.scan_folder(body.folder_path, body.recursive)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    preview = [
+        {"title": m["title"], "year": m["year"], "filename": m["filename"]}
+        for m in parsed[:10]
+    ]
+    return {"total": len(parsed), "movies": preview}
+
+
+@router.post("/folder/start")
+def start_folder_import(body: FolderStartBody):
+    """Scan folder, resolve TMDB IDs, start streaming import. Returns job_id."""
+    try:
+        parsed = scanner.scan_folder(body.folder_path, body.recursive)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if not parsed:
+        raise HTTPException(status_code=400, detail="No movie files found in the specified folder.")
+
+    # Resolve TMDB IDs synchronously (fast enough for a start endpoint)
+    resolved = _resolve_folder_movies(parsed)
+
+    if not resolved:
+        raise HTTPException(status_code=400, detail="Could not match any files to TMDB movies.")
+
+    job_id = _new_job("folder")
+    t = threading.Thread(
+        target=_run_import,
+        args=(job_id, resolved, "folder", body.folder_path),
+        daemon=True,
+    )
+    t.start()
+
+    return {"job_id": job_id, "total": len(resolved)}
+
+
+# ---------------------------------------------------------------------------
+# Import sessions
+# ---------------------------------------------------------------------------
+
+@router.get("/sessions")
+def get_sessions():
+    """Return recent import sessions (last 20)."""
+    return db.get_import_sessions(limit=20)

@@ -157,6 +157,32 @@ export interface ImportResult {
   errors: string[]
 }
 
+export interface ImportProgressEvent {
+  type: 'start' | 'progress' | 'done' | 'error'
+  total?: number
+  current?: number
+  title?: string
+  status?: 'imported' | 'skipped' | 'failed'
+  imported?: number
+  skipped?: number
+  failed?: number
+  elapsed_seconds?: number
+  source?: string
+  reason?: string
+}
+
+export interface ImportSession {
+  id: number
+  source: string
+  source_detail: string
+  started_at: string
+  finished_at: string | null
+  total: number
+  imported: number
+  skipped: number
+  failed: number
+}
+
 // ---------------------------------------------------------------------------
 // Import API functions
 // ---------------------------------------------------------------------------
@@ -165,18 +191,10 @@ export function previewTMDBList(listId: string): Promise<TMDBListPreview> {
   return api.get(`/import/tmdb-list/${encodeURIComponent(listId)}`).then((r) => r.data)
 }
 
-export function importTMDBList(listId: string): Promise<ImportResult> {
-  return api.post(`/import/tmdb-list/${encodeURIComponent(listId)}`).then((r) => r.data)
-}
-
 export function previewTrakt(username: string, listSlug?: string): Promise<TraktPreview> {
   const params: Record<string, string> = { username }
   if (listSlug) params.list_slug = listSlug
   return api.get('/import/trakt/preview', { params }).then((r) => r.data)
-}
-
-export function importTrakt(username: string, listSlug?: string): Promise<ImportResult> {
-  return api.post('/import/trakt', { username, list_slug: listSlug || null }).then((r) => r.data)
 }
 
 export function getPlexLibraries(plex_url: string, plex_token: string): Promise<PlexLibrary[]> {
@@ -187,6 +205,21 @@ export function previewPlex(plex_url: string, plex_token: string, section_key: s
   return api.post('/import/plex/preview', { plex_url, plex_token, section_key }).then((r) => r.data)
 }
 
-export function importPlex(plex_url: string, plex_token: string, section_key: string): Promise<ImportResult> {
-  return api.post('/import/plex', { plex_url, plex_token, section_key }).then((r) => r.data)
-}
+// Start import jobs (return job_id)
+export const startTMDBListImport = (listId: string) =>
+  api.post<{ job_id: string; total: number; list_name?: string }>(`/import/tmdb-list/${encodeURIComponent(listId)}/start`).then((r) => r.data)
+
+export const startTraktImport = (username: string, listSlug?: string) =>
+  api.post<{ job_id: string; total: number }>('/import/trakt/start', { username, list_slug: listSlug || null }).then((r) => r.data)
+
+export const startPlexImport = (plex_url: string, plex_token: string, section_key: string) =>
+  api.post<{ job_id: string; total: number }>('/import/plex/start', { plex_url, plex_token, section_key }).then((r) => r.data)
+
+export const startFolderImport = (folder_path: string, recursive = true) =>
+  api.post<{ job_id: string; total: number }>('/import/folder/start', { folder_path, recursive }).then((r) => r.data)
+
+export const previewFolder = (folder_path: string, recursive = true) =>
+  api.post<{ total: number; movies: { title: string; year: number | null; filename: string }[] }>('/import/folder/preview', { folder_path, recursive }).then((r) => r.data)
+
+export const getImportSessions = () =>
+  api.get<ImportSession[]>('/import/sessions').then((r) => r.data)

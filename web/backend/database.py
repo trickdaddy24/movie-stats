@@ -64,6 +64,19 @@ def setup_db():
                 language TEXT,
                 likes INTEGER DEFAULT 0
             );
+
+            CREATE TABLE IF NOT EXISTS import_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source TEXT NOT NULL,
+                source_detail TEXT,
+                started_at TEXT NOT NULL,
+                finished_at TEXT,
+                total INTEGER DEFAULT 0,
+                imported INTEGER DEFAULT 0,
+                skipped INTEGER DEFAULT 0,
+                failed INTEGER DEFAULT 0,
+                log_json TEXT DEFAULT '[]'
+            );
         """)
 
 
@@ -314,5 +327,61 @@ def search_local(query: str) -> list:
         rows = conn.execute(
             "SELECT * FROM movies WHERE title LIKE ? OR original_title LIKE ? ORDER BY title LIMIT 50",
             (f"%{query}%", f"%{query}%"),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# Import sessions
+# ---------------------------------------------------------------------------
+
+def create_import_session(source: str, source_detail: Optional[str] = None) -> int:
+    """Insert a new import session row and return its id."""
+    import json
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO import_sessions (source, source_detail, started_at, log_json)
+            VALUES (?, ?, ?, '[]')
+            """,
+            (source, source_detail, datetime.now(timezone.utc).isoformat()),
+        )
+        return cursor.lastrowid
+
+
+def finish_import_session(
+    session_id: int,
+    imported: int,
+    skipped: int,
+    failed: int,
+    log_entries: list,
+) -> None:
+    """Update an import session with final counts and log."""
+    import json
+    with get_db() as conn:
+        conn.execute(
+            """
+            UPDATE import_sessions
+            SET finished_at=?, total=?, imported=?, skipped=?, failed=?, log_json=?
+            WHERE id=?
+            """,
+            (
+                datetime.now(timezone.utc).isoformat(),
+                imported + skipped + failed,
+                imported,
+                skipped,
+                failed,
+                json.dumps(log_entries),
+                session_id,
+            ),
+        )
+
+
+def get_import_sessions(limit: int = 20) -> list[dict]:
+    """Return recent import sessions, newest first."""
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM import_sessions ORDER BY id DESC LIMIT ?",
+            (limit,),
         ).fetchall()
         return [dict(r) for r in rows]
