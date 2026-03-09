@@ -1,0 +1,318 @@
+import sqlite3
+from contextlib import contextmanager
+from datetime import datetime, timezone
+from typing import Optional
+
+DB_PATH = "movie_stats.db"
+
+
+def setup_db():
+    with get_db() as conn:
+        conn.executescript("""
+            PRAGMA journal_mode=WAL;
+            PRAGMA foreign_keys=ON;
+
+            CREATE TABLE IF NOT EXISTS movies (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tmdb_id INTEGER UNIQUE NOT NULL,
+                imdb_id TEXT,
+                title TEXT NOT NULL,
+                original_title TEXT,
+                overview TEXT,
+                release_date TEXT,
+                runtime INTEGER,
+                rating REAL,
+                vote_count INTEGER,
+                tagline TEXT,
+                status TEXT DEFAULT 'active',
+                added_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS external_ids (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                movie_id INTEGER REFERENCES movies(id) ON DELETE CASCADE,
+                source TEXT NOT NULL,
+                external_id TEXT NOT NULL,
+                UNIQUE(movie_id, source)
+            );
+
+            CREATE TABLE IF NOT EXISTS cast_crew (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                movie_id INTEGER REFERENCES movies(id) ON DELETE CASCADE,
+                tmdb_person_id INTEGER,
+                name TEXT,
+                role TEXT,
+                character_name TEXT,
+                job TEXT,
+                department TEXT,
+                display_order INTEGER,
+                profile_path TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS genres (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                movie_id INTEGER REFERENCES movies(id) ON DELETE CASCADE,
+                name TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS artwork (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                movie_id INTEGER REFERENCES movies(id) ON DELETE CASCADE,
+                source TEXT,
+                type TEXT,
+                url TEXT,
+                language TEXT,
+                likes INTEGER DEFAULT 0
+            );
+        """)
+
+
+@contextmanager
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def add_movie(movie_data: dict) -> int:
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO movies
+                (tmdb_id, imdb_id, title, original_title, overview,
+                 release_date, runtime, rating, vote_count, tagline, status, added_at)
+            VALUES
+                (:tmdb_id, :imdb_id, :title, :original_title, :overview,
+                 :release_date, :runtime, :rating, :vote_count, :tagline, :status, :added_at)
+            ON CONFLICT(tmdb_id) DO UPDATE SET
+                imdb_id=excluded.imdb_id,
+                title=excluded.title,
+                original_title=excluded.original_title,
+                overview=excluded.overview,
+                release_date=excluded.release_date,
+                runtime=excluded.runtime,
+                rating=excluded.rating,
+                vote_count=excluded.vote_count,
+                tagline=excluded.tagline
+            """,
+            {
+                "tmdb_id": movie_data.get("tmdb_id"),
+                "imdb_id": movie_data.get("imdb_id"),
+                "title": movie_data.get("title", ""),
+                "original_title": movie_data.get("original_title"),
+                "overview": movie_data.get("overview"),
+                "release_date": movie_data.get("release_date"),
+                "runtime": movie_data.get("runtime"),
+                "rating": movie_data.get("rating"),
+                "vote_count": movie_data.get("vote_count"),
+                "tagline": movie_data.get("tagline"),
+                "status": movie_data.get("status", "active"),
+                "added_at": movie_data.get("added_at", datetime.now(timezone.utc).isoformat()),
+            },
+        )
+        if cursor.lastrowid:
+            return cursor.lastrowid
+        row = conn.execute(
+            "SELECT id FROM movies WHERE tmdb_id=?", (movie_data["tmdb_id"],)
+        ).fetchone()
+        return row["id"]
+
+
+def add_cast_crew(movie_id: int, people: list):
+    with get_db() as conn:
+        conn.execute("DELETE FROM cast_crew WHERE movie_id=?", (movie_id,))
+        conn.executemany(
+            """
+            INSERT INTO cast_crew
+                (movie_id, tmdb_person_id, name, role, character_name, job, department, display_order, profile_path)
+            VALUES
+                (:movie_id, :tmdb_person_id, :name, :role, :character_name, :job, :department, :display_order, :profile_path)
+            """,
+            [
+                {
+                    "movie_id": movie_id,
+                    "tmdb_person_id": p.get("tmdb_person_id"),
+                    "name": p.get("name"),
+                    "role": p.get("role"),
+                    "character_name": p.get("character_name"),
+                    "job": p.get("job"),
+                    "department": p.get("department"),
+                    "display_order": p.get("display_order", 0),
+                    "profile_path": p.get("profile_path"),
+                }
+                for p in people
+            ],
+        )
+
+
+def add_genres(movie_id: int, genres: list):
+    with get_db() as conn:
+        conn.execute("DELETE FROM genres WHERE movie_id=?", (movie_id,))
+        conn.executemany(
+            "INSERT INTO genres (movie_id, name) VALUES (?, ?)",
+            [(movie_id, g) for g in genres],
+        )
+
+
+def add_artwork(movie_id: int, artworks: list):
+    with get_db() as conn:
+        conn.execute("DELETE FROM artwork WHERE movie_id=?", (movie_id,))
+        conn.executemany(
+            """
+            INSERT INTO artwork (movie_id, source, type, url, language, likes)
+            VALUES (:movie_id, :source, :type, :url, :language, :likes)
+            """,
+            [
+                {
+                    "movie_id": movie_id,
+                    "source": a.get("source", "tmdb"),
+                    "type": a.get("type"),
+                    "url": a.get("url"),
+                    "language": a.get("language"),
+                    "likes": a.get("likes", 0),
+                }
+                for a in artworks
+            ],
+        )
+
+
+def add_external_id(movie_id: int, source: str, external_id: str):
+    with get_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO external_ids (movie_id, source, external_id)
+            VALUES (?, ?, ?)
+            ON CONFLICT(movie_id, source) DO UPDATE SET external_id=excluded.external_id
+            """,
+            (movie_id, source, external_id),
+        )
+
+
+def get_movie_by_tmdb_id(tmdb_id: int) -> Optional[dict]:
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT * FROM movies WHERE tmdb_id=?", (tmdb_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def get_movie_by_id(movie_id: int) -> Optional[dict]:
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT * FROM movies WHERE id=?", (movie_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def get_movie_full(movie_id: int) -> dict:
+    with get_db() as conn:
+        movie_row = conn.execute(
+            "SELECT * FROM movies WHERE id=?", (movie_id,)
+        ).fetchone()
+        if not movie_row:
+            return {}
+
+        movie = dict(movie_row)
+
+        cast_rows = conn.execute(
+            "SELECT * FROM cast_crew WHERE movie_id=? ORDER BY display_order",
+            (movie_id,),
+        ).fetchall()
+        all_people = [dict(r) for r in cast_rows]
+        movie["cast"] = [p for p in all_people if p["role"] == "cast"]
+        movie["crew"] = [p for p in all_people if p["role"] == "crew"]
+
+        genre_rows = conn.execute(
+            "SELECT name FROM genres WHERE movie_id=?", (movie_id,)
+        ).fetchall()
+        movie["genres"] = [r["name"] for r in genre_rows]
+
+        artwork_rows = conn.execute(
+            "SELECT * FROM artwork WHERE movie_id=? ORDER BY likes DESC",
+            (movie_id,),
+        ).fetchall()
+        movie["artwork"] = [dict(r) for r in artwork_rows]
+
+        ext_rows = conn.execute(
+            "SELECT source, external_id FROM external_ids WHERE movie_id=?",
+            (movie_id,),
+        ).fetchall()
+        movie["external_ids"] = [dict(r) for r in ext_rows]
+
+        return movie
+
+
+def list_movies(search: Optional[str] = None, genre: Optional[str] = None, page: int = 1, page_size: int = 20) -> dict:
+    with get_db() as conn:
+        base_query = "FROM movies m"
+        params: list = []
+        where_clauses = []
+
+        if genre:
+            base_query += " JOIN genres g ON g.movie_id = m.id"
+            where_clauses.append("g.name = ?")
+            params.append(genre)
+
+        if search:
+            where_clauses.append("(m.title LIKE ? OR m.original_title LIKE ?)")
+            params.extend([f"%{search}%", f"%{search}%"])
+
+        where_sql = ""
+        if where_clauses:
+            where_sql = " WHERE " + " AND ".join(where_clauses)
+
+        count_row = conn.execute(
+            f"SELECT COUNT(DISTINCT m.id) {base_query}{where_sql}", params
+        ).fetchone()
+        total = count_row[0]
+
+        offset = (page - 1) * page_size
+        rows = conn.execute(
+            f"SELECT DISTINCT m.* {base_query}{where_sql} ORDER BY m.added_at DESC LIMIT ? OFFSET ?",
+            params + [page_size, offset],
+        ).fetchall()
+
+        movies = []
+        for row in rows:
+            m = dict(row)
+            genre_rows = conn.execute(
+                "SELECT name FROM genres WHERE movie_id=?", (m["id"],)
+            ).fetchall()
+            m["genres"] = [r["name"] for r in genre_rows]
+            artwork_row = conn.execute(
+                "SELECT url FROM artwork WHERE movie_id=? AND type='poster' ORDER BY likes DESC LIMIT 1",
+                (m["id"],),
+            ).fetchone()
+            m["poster_url"] = artwork_row["url"] if artwork_row else None
+            movies.append(m)
+
+        return {
+            "movies": movies,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "pages": max(1, (total + page_size - 1) // page_size),
+        }
+
+
+def delete_movie(movie_id: int):
+    with get_db() as conn:
+        conn.execute("DELETE FROM movies WHERE id=?", (movie_id,))
+
+
+def search_local(query: str) -> list:
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM movies WHERE title LIKE ? OR original_title LIKE ? ORDER BY title LIMIT 50",
+            (f"%{query}%", f"%{query}%"),
+        ).fetchall()
+        return [dict(r) for r in rows]
