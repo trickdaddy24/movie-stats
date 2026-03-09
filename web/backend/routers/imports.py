@@ -176,7 +176,7 @@ def _resolve_folder_movies(parsed_movies: list[dict]) -> list[dict]:
             else:
                 match = items[0] if items else None
             if match:
-                resolved.append({"tmdb_id": match["tmdb_id"], "title": match["title"]})
+                resolved.append({"tmdb_id": match["id"], "title": match["title"]})
         except Exception:
             pass
     return resolved
@@ -363,6 +363,29 @@ def start_trakt_import(body: TraktImportBody):
 # ---------------------------------------------------------------------------
 # Plex endpoints
 # ---------------------------------------------------------------------------
+
+@router.get("/plex/saved")
+def get_plex_saved():
+    """
+    Return Plex libraries using PLEX_URL + PLEX_TOKEN from .env.
+    Returns {configured: bool, plex_url: str, libraries: [...]}
+    """
+    import os
+    plex_url   = os.getenv("PLEX_URL", "").strip()
+    plex_token = os.getenv("PLEX_TOKEN", "").strip()
+
+    placeholders = {"your_plex_token_here", ""}
+    if not plex_url or not plex_token or plex_token in placeholders:
+        return {"configured": False, "plex_url": "", "libraries": []}
+
+    try:
+        if not plex_client.validate_connection(plex_url, plex_token):
+            return {"configured": True, "plex_url": plex_url, "libraries": [], "error": "Cannot reach Plex server"}
+        libraries = plex_client.get_libraries(plex_url, plex_token)
+        return {"configured": True, "plex_url": plex_url, "libraries": libraries}
+    except Exception as e:
+        return {"configured": True, "plex_url": plex_url, "libraries": [], "error": str(e)}
+
 
 @router.post("/plex/libraries")
 def get_plex_libraries(body: PlexLibrariesBody):

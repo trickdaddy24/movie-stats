@@ -197,6 +197,17 @@ export function previewTrakt(username: string, listSlug?: string): Promise<Trakt
   return api.get('/import/trakt/preview', { params }).then((r) => r.data)
 }
 
+export interface PlexSavedResult {
+  configured: boolean
+  plex_url: string
+  libraries: PlexLibrary[]
+  error?: string
+}
+
+export function getPlexSaved(): Promise<PlexSavedResult> {
+  return api.get('/import/plex/saved').then((r) => r.data)
+}
+
 export function getPlexLibraries(plex_url: string, plex_token: string): Promise<PlexLibrary[]> {
   return api.post('/import/plex/libraries', { plex_url, plex_token }).then((r) => r.data)
 }
