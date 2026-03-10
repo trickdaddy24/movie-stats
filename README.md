@@ -52,7 +52,7 @@
 
 | Library | Movie Detail | Search |
 |---------|-------------|--------|
-| ![Library](/screenshots/chrome_hMIrh51fZl.jpg) | ![Detail](docs/screenshots/detail.png) | ![Search](docs/screenshots/search.png) |
+| ![Library](/screenshots/chrome_hMIrh51fZl.jpg) | ![Detail](/screenshots/chrome_flo0hgQxKc.png) | ![Search](/screenshots/chrome_pCbOhrlAKX.jpg) |
 
 ---
 
