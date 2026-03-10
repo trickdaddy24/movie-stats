@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.6] - 2026-03-09
+
+### Fixed
+- **Add Movie** (`/search`) now actually searches TMDB and adds movies — previous implementation was searching the local library with no add button; rewritten to call `GET /api/search` and `POST /api/search/add/{tmdb_id}`, with spinner, "Add" button per result, and "In Library" state after adding
+- **Wikidata external ID** now renders as a clickable link (`https://www.wikidata.org/wiki/{id}`) on the Movie Detail page; Facebook, Instagram, and Twitter IDs also get proper links
+
 ## [1.4.5] - 2026-03-09
 
 ### Changed

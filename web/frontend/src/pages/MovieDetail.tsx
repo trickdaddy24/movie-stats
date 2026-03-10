@@ -338,7 +338,7 @@ export default function MovieDetail() {
               {movie.external_ids
                 ?.filter((e) => e.source !== 'tmdb' && e.source !== 'imdb')
                 .map((e, i) => (
-                  <ExternalIdBadge key={i} label={e.source} value={e.external_id} />
+                  <ExternalIdBadge key={i} label={e.source} value={e.external_id} url={externalIdUrl(e.source, e.external_id)} />
                 ))}
             </div>
           </section>
@@ -346,6 +346,16 @@ export default function MovieDetail() {
       </div>
     </div>
   )
+}
+
+function externalIdUrl(source: string, id: string): string | undefined {
+  switch (source) {
+    case 'wikidata':  return `https://www.wikidata.org/wiki/${id}`
+    case 'facebook':  return `https://www.facebook.com/${id}`
+    case 'instagram': return `https://www.instagram.com/${id}`
+    case 'twitter':   return `https://twitter.com/${id}`
+    default:          return undefined
+  }
 }
 
 function ExternalIdBadge({
