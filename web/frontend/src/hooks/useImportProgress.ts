@@ -99,7 +99,12 @@ export function useImportProgress() {
 
     es.onerror = () => {
       es.close()
-      setProgress((p) => ({ ...p, running: false }))
+      setProgress((p) => {
+        // If already marked done (done event was received), just clear running flag
+        if (p.done) return { ...p, running: false }
+        // Connection dropped before done event — mark done so progress stays visible
+        return { ...p, running: false, done: true }
+      })
     }
   }, [])
 

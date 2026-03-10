@@ -3,7 +3,7 @@ import { Film, Library, Search, Upload, Settings, FlaskConical } from 'lucide-re
 import { useQuery } from '@tanstack/react-query'
 import { getKeyStatus } from '../lib/api'
 
-const VERSION = '1.3.0'
+const VERSION = '1.4.0'
 
 function KeyStatusDot() {
   const { data: keys } = useQuery({ queryKey: ['settings-keys'], queryFn: getKeyStatus })

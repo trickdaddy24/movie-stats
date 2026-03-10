@@ -183,6 +183,24 @@ def _resolve_folder_movies(parsed_movies: list[dict]) -> list[dict]:
     return resolved
 
 
+def _run_folder_import(job_id: str, parsed: list[dict], folder_path: str) -> None:
+    """Resolve filenames to TMDB IDs in the background, then run the standard import loop."""
+    resolved = _resolve_folder_movies(parsed)
+    if not resolved:
+        log.warning(f"[folder] No TMDB matches for {len(parsed)} files in {folder_path}")
+        _job_events[job_id].append({"type": "start", "total": len(parsed), "source": "folder"})
+        _job_events[job_id].append({
+            "type": "done",
+            "imported": 0,
+            "skipped": 0,
+            "failed": len(parsed),
+            "elapsed_seconds": 0,
+        })
+        _jobs[job_id]["done"] = True
+        return
+    _run_import(job_id, resolved, "folder", folder_path)
+
+
 # ---------------------------------------------------------------------------
 # Request / response models
 # ---------------------------------------------------------------------------
@@ -473,7 +491,7 @@ def preview_folder(body: FolderPreviewBody):
 
 @router.post("/folder/start")
 def start_folder_import(body: FolderStartBody):
-    """Scan folder, resolve TMDB IDs, start streaming import. Returns job_id."""
+    """Scan folder, start streaming import. TMDB resolution happens in the background thread."""
     try:
         parsed = scanner.scan_folder(body.folder_path, body.recursive)
     except ValueError as e:
@@ -482,21 +500,15 @@ def start_folder_import(body: FolderStartBody):
     if not parsed:
         raise HTTPException(status_code=400, detail="No movie files found in the specified folder.")
 
-    # Resolve TMDB IDs synchronously (fast enough for a start endpoint)
-    resolved = _resolve_folder_movies(parsed)
-
-    if not resolved:
-        raise HTTPException(status_code=400, detail="Could not match any files to TMDB movies.")
-
     job_id = _new_job("folder")
     t = threading.Thread(
-        target=_run_import,
-        args=(job_id, resolved, "folder", body.folder_path),
+        target=_run_folder_import,
+        args=(job_id, parsed, body.folder_path),
         daemon=True,
     )
     t.start()
 
-    return {"job_id": job_id, "total": len(resolved)}
+    return {"job_id": job_id, "total": len(parsed)}
 
 
 # ---------------------------------------------------------------------------

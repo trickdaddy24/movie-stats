@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.4.0] - 2026-03-09
+
+### Added
+- `movie.db.py` — Search & Add Movie (➕): search TMDB by title and optional year, pick from results, save full movie with cast/crew/artwork/external IDs to library
+- `movie.db.py` — `add_movie_to_db()` helper that writes all related tables (cast_crew, genres, artwork, external_ids) in one transaction
+- `movie.db.py` — emoji menu (📊 📚 🎬 🗑️ 🔍 ➕ 🧪 📦 🔑 👁️ 🚪) with tuple-based dispatch, removing fragile string matching
+- `movie.db.py` — Exit is now always `0` regardless of how many menu items are visible
+- `movie.db.py` — Removed "Settings" section header from menu; Configure/Show API Keys remain as numbered items
+- `movie.db.py` — Data submenu also uses emoji and exit via `0`
+
+### Fixed
+- Folder import "Import All" was broken — TMDB resolution happened synchronously in the HTTP request handler (one API call per file), causing timeouts and 400 errors on large folders; resolution now runs inside the background thread so the job starts immediately
+- SSE `onerror` in `useImportProgress` silently wiped the progress state if the connection dropped before the `done` event, making it look like nothing happened; now `onerror` marks the import as done so progress stays visible
+
 ## [1.3.0] - 2026-03-09
 
 ### Added

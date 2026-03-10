@@ -1,6 +1,6 @@
 """
 movie.db.py — Movie Database CLI
-Version: 1.3.0
+Version: 1.4.0
 
 Shares the same SQLite database as the web app (web/backend/movie_stats.db).
 """
@@ -12,6 +12,7 @@ import csv
 import logging
 import difflib
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from contextlib import contextmanager
 import sqlite3
@@ -41,7 +42,7 @@ def bold(t):  return _c(t, "1")
 def blue(t):  return _c(t, "94")
 def yellow(t):return _c(t, "93")
 
-VERSION = "1.3.0"
+VERSION = "1.4.0"
 
 API_KEYS = [
     {"key": "TMDB_API_KEY",    "label": "TMDB API Key",    "required": True,  "hint": "https://www.themoviedb.org/settings/api"},
@@ -309,6 +310,172 @@ def show_totals():
         for r in recent:
             year = r["release_date"][:4] if r["release_date"] else "—"
             print(f"    {r['title']}  ({year})")
+
+
+# ── Add Movie to Library ──────────────────────────────────────────────────────
+
+def add_movie_to_db(movie_data: dict, fanart_art: list = None) -> int:
+    """Insert a movie from a tmdb.get_movie() result into the shared DB.
+    Returns the new row id, or 0 if the movie already exists."""
+    if fanart_art is None:
+        fanart_art = []
+    with get_db() as conn:
+        cur = conn.execute(
+            """INSERT INTO movies
+               (tmdb_id, imdb_id, title, original_title, overview, release_date, runtime,
+                rating, vote_count, tagline, status, added_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(tmdb_id) DO NOTHING""",
+            (
+                movie_data["tmdb_id"],
+                movie_data.get("imdb_id"),
+                movie_data["title"],
+                movie_data.get("original_title"),
+                movie_data.get("overview"),
+                movie_data.get("release_date"),
+                movie_data.get("runtime"),
+                movie_data.get("rating"),
+                movie_data.get("vote_count"),
+                movie_data.get("tagline"),
+                "active",
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        movie_id = cur.lastrowid
+        if not movie_id:
+            return 0  # already existed
+
+        for i, p in enumerate(movie_data.get("cast", []) + movie_data.get("crew", [])):
+            conn.execute(
+                """INSERT INTO cast_crew
+                   (movie_id, tmdb_person_id, name, role, character_name,
+                    job, department, display_order, profile_path)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                (
+                    movie_id, p.get("tmdb_person_id"), p.get("name"), p.get("role"),
+                    p.get("character_name"), p.get("job"), p.get("department"),
+                    p.get("display_order", i), p.get("profile_path"),
+                ),
+            )
+
+        for g in movie_data.get("genres", []):
+            conn.execute("INSERT INTO genres (movie_id, name) VALUES (?,?)", (movie_id, g))
+
+        for art in movie_data.get("artwork", []) + fanart_art:
+            conn.execute(
+                "INSERT INTO artwork (movie_id, source, type, url, language, likes) VALUES (?,?,?,?,?,?)",
+                (movie_id, art.get("source"), art.get("type"), art.get("url"),
+                 art.get("language"), art.get("likes", 0)),
+            )
+
+        ext = movie_data.get("external_ids", {})
+        for source, eid in [
+            ("imdb",      movie_data.get("imdb_id")),
+            ("tmdb",      str(movie_data["tmdb_id"])),
+            ("wikidata",  ext.get("wikidata_id")),
+            ("facebook",  ext.get("facebook_id")),
+            ("instagram", ext.get("instagram_id")),
+            ("twitter",   ext.get("twitter_id")),
+        ]:
+            if eid:
+                conn.execute(
+                    "INSERT OR IGNORE INTO external_ids (movie_id, source, external_id) VALUES (?,?,?)",
+                    (movie_id, source, eid),
+                )
+
+    return movie_id
+
+
+def search_and_add_cli():
+    """Search TMDB by title and optional year, pick a result, save to library."""
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(ENV_PATH)
+    except ImportError:
+        pass
+
+    try:
+        import tmdb as tmdb_mod
+    except ImportError:
+        print(f"\n  {red('✗')} Could not import tmdb module from web/backend/.")
+        print("  Make sure you are running this script from the MovieStats directory.")
+        return
+
+    print(f"\n  {bold('Search & Add Movie')}\n")
+
+    title = input("  Movie title: ").strip()
+    if not title:
+        print("  Cancelled.")
+        return
+
+    year_str = input("  Year (optional — press Enter to skip): ").strip()
+    query_year = int(year_str) if year_str.isdigit() else None
+
+    print(f"\n  Searching TMDB…\n")
+    try:
+        results = tmdb_mod.search_movies(title, page=1)
+    except Exception as e:
+        print(f"  {red('✗')} TMDB search failed: {e}")
+        print("  Check that your TMDB API key is configured.")
+        return
+
+    raw = results.get("results", [])[:10]
+    if query_year:
+        filtered = [r for r in raw if r.get("release_date", "")[:4] == str(query_year)]
+        if filtered:
+            raw = filtered
+
+    if not raw:
+        print("  No results found.")
+        return
+
+    print(f"  {'#':<4} {'TMDB ID':<10} {'Title':<42}  Year")
+    print("  " + "─" * 68)
+    for i, r in enumerate(raw, 1):
+        year = r.get("release_date", "")[:4] or "—"
+        print(f"  {i:<4} {r.get('id', ''):<10} {r.get('title', '')[:41]:<42}  {year}")
+
+    print()
+    pick = input("  Enter # to add to library (or Enter to cancel): ").strip()
+    if not pick.isdigit() or not (1 <= int(pick) <= len(raw)):
+        print("  Cancelled.")
+        return
+
+    selected = raw[int(pick) - 1]
+    tmdb_id = selected.get("id") or selected.get("tmdb_id")
+
+    with get_db() as conn:
+        existing = conn.execute(
+            "SELECT id, title FROM movies WHERE tmdb_id=?", (tmdb_id,)
+        ).fetchone()
+    if existing:
+        print(f"  {yellow('!')} Already in library: {existing['title']}")
+        return
+
+    print(f"  Fetching full details for {selected.get('title', '')} (TMDB {tmdb_id})…")
+    try:
+        movie_data = tmdb_mod.get_movie(tmdb_id)
+    except Exception as e:
+        print(f"  {red('✗')} TMDB fetch failed: {e}")
+        return
+
+    fanart_art = []
+    try:
+        import fanart as fanart_mod
+        fanart_art = fanart_mod.get_movie_art_flat(tmdb_id)
+    except Exception:
+        pass
+
+    movie_id = add_movie_to_db(movie_data, fanart_art)
+    if movie_id:
+        yr = (movie_data.get("release_date") or "")[:4] or "—"
+        print(f"\n  {green('✓')} Added: {bold(movie_data['title'])} ({yr})")
+        cast_n = len(movie_data.get("cast", []))
+        art_n  = len(movie_data.get("artwork", [])) + len(fanart_art)
+        print(f"  {dim(f'  cast/crew: {cast_n}  artwork: {art_n}')}")
+        logging.info(f"Added TMDB {tmdb_id} — {movie_data['title']}")
+    else:
+        print(f"  {yellow('!')} Movie is already in the library.")
 
 
 # ── Export / Import ───────────────────────────────────────────────────────────
@@ -670,28 +837,53 @@ def show_api_keys():
 
 def data_submenu():
     while True:
-        print(f"\n  {bold('Data Import / Export')}")
-        opts = ["Export JSON", "Import JSON", "Export CSV", "Import CSV", "Back"]
-        for i, o in enumerate(opts, 1):
-            print(f"  {i}. {o}")
+        print(f"\n  {bold('📦 Data Import / Export')}")
+        opts = [
+            ("📤 Export JSON", export_json),
+            ("📥 Import JSON", import_json),
+            ("📊 Export CSV",  export_csv),
+            ("📋 Import CSV",  import_csv),
+        ]
+        for i, (label, _) in enumerate(opts, 1):
+            print(f"  {i}. {label}")
+        print(f"  0. ← Back")
 
-        raw = input(f"\n  Choice (1-{len(opts)}): ").strip()
+        raw = input(f"\n  Choice (0-{len(opts)}): ").strip()
+        if raw == "0":
+            return
         if not raw.isdigit() or not (1 <= int(raw) <= len(opts)):
-            print("  ✗ Invalid choice.")
+            print(f"  {red('✗')} Invalid choice.")
             continue
-
-        action = opts[int(raw) - 1]
-        if   action == "Export JSON": export_json()
-        elif action == "Import JSON": import_json()
-        elif action == "Export CSV":  export_csv()
-        elif action == "Import CSV":  import_csv()
-        elif action == "Back":        return
+        _, fn = opts[int(raw) - 1]
+        fn()
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def clean(s: str) -> str:
     return re.sub(r'[;\"\'\\]', '', s.strip()) if s else ""
+
+
+def _view_prompt():
+    try:
+        tmdb_id = int(input("  TMDB ID: ").strip())
+        view_entry(tmdb_id)
+    except ValueError:
+        print(f"  {red('✗')} Enter a numeric TMDB ID.")
+
+
+def _delete_prompt():
+    try:
+        tmdb_id = int(input("  TMDB ID to delete: ").strip())
+        delete_entry(tmdb_id)
+    except ValueError:
+        print(f"  {red('✗')} Enter a numeric TMDB ID.")
+
+
+def _search_prompt():
+    q = input("  Search title: ").strip()
+    if q:
+        list_entries(search=q)
 
 
 def cli():
@@ -703,71 +895,41 @@ def cli():
     print(f"  Library: {green(str(counts['total']))} movies")
 
     while True:
-        has  = counts["total"] > 0
-        opts = ["Totals & Stats"]
+        has = counts["total"] > 0
+
+        menu: list[tuple[str, object]] = [("📊 Totals & Stats", show_totals)]
         if has:
-            opts += ["List Library", "View Movie", "Delete Movie", "Search Library"]
-        opts += ["Test Match (TMDB Dry Run)", "Data Import / Export"]
-        opts += ["─── Settings ───", "Configure API Keys", "Show API Keys", "Exit"]
+            menu += [
+                ("📚 List Library",       list_entries),
+                ("🎬 View Movie",         _view_prompt),
+                ("🗑️  Delete Movie",      _delete_prompt),
+                ("🔍 Search Library",     _search_prompt),
+            ]
+        menu += [
+            ("➕ Search & Add Movie",     search_and_add_cli),
+            ("🧪 Test Match (Dry Run)",   test_match_cli),
+            ("📦 Data Import / Export",   data_submenu),
+            ("🔑 Configure API Keys",     setup_api_keys),
+            ("👁️  Show API Keys",         show_api_keys),
+        ]
 
         print()
-        for i, o in enumerate(opts, 1):
-            if o.startswith("───"):
-                print(f"\n  {o}")
-            else:
-                print(f"  {i}. {o}")
+        for i, (label, _) in enumerate(menu, 1):
+            print(f"  {i:2}. {label}")
+        print(f"\n   0. 🚪 Exit")
 
-        raw = clean(input(f"\n  Choice (1-{len(opts)}): "))
-        if not raw.isdigit() or not (1 <= int(raw) <= len(opts)):
-            print("  ✗ Invalid choice.")
-            continue
+        raw = clean(input(f"\n  Choice (0-{len(menu)}): "))
 
-        action = opts[int(raw) - 1]
-        if action.startswith("───"):
-            print("  ✗ That is a section header, not an option.")
-            continue
-
-        if action == "Totals & Stats":
-            show_totals()
-
-        elif action == "List Library":
-            list_entries()
-
-        elif action == "View Movie":
-            try:
-                tmdb_id = int(input("  TMDB ID: ").strip())
-                view_entry(tmdb_id)
-            except ValueError:
-                print("  ✗ Enter a numeric TMDB ID.")
-
-        elif action == "Delete Movie":
-            try:
-                tmdb_id = int(input("  TMDB ID to delete: ").strip())
-                delete_entry(tmdb_id)
-            except ValueError:
-                print("  ✗ Enter a numeric TMDB ID.")
-
-        elif action == "Search Library":
-            q = input("  Search title: ").strip()
-            if q:
-                list_entries(search=q)
-
-        elif action == "Test Match (TMDB Dry Run)":
-            test_match_cli()
-
-        elif action == "Data Import / Export":
-            data_submenu()
-
-        elif action == "Configure API Keys":
-            setup_api_keys()
-
-        elif action == "Show API Keys":
-            show_api_keys()
-
-        elif action == "Exit":
+        if raw == "0":
             print("  Bye.")
             sys.exit(0)
 
+        if not raw.isdigit() or not (1 <= int(raw) <= len(menu)):
+            print(f"  {red('✗')} Invalid choice.")
+            continue
+
+        _, fn = menu[int(raw) - 1]
+        fn()
         counts = count_all()
 
 
