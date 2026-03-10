@@ -13,7 +13,8 @@ export interface ProgressState {
   failed: number
   elapsedSeconds: number
   etaSeconds: number | null
-  log: { title: string; status: string }[]
+  failureReason: string | null
+  log: { title: string; status: string; reason?: string }[]
 }
 
 const INITIAL: ProgressState = {
@@ -28,6 +29,7 @@ const INITIAL: ProgressState = {
   failed: 0,
   elapsedSeconds: 0,
   etaSeconds: null,
+  failureReason: null,
   log: [],
 }
 
@@ -75,7 +77,7 @@ export function useImportProgress() {
             failed: prev.failed + (event.status === 'failed' ? 1 : 0),
             elapsedSeconds: elapsed,
             etaSeconds: current < total ? Math.round(eta) : 0,
-            log: [{ title: event.title ?? '', status: event.status ?? '' }, ...prev.log].slice(0, 200),
+            log: [{ title: event.title ?? '', status: event.status ?? '', reason: event.reason }, ...prev.log].slice(0, 200),
           }
         }
 
@@ -90,6 +92,7 @@ export function useImportProgress() {
             failed: event.failed ?? prev.failed,
             elapsedSeconds: event.elapsed_seconds ?? elapsed,
             etaSeconds: 0,
+            failureReason: event.reason ?? null,
           }
         }
 

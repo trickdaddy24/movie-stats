@@ -111,9 +111,18 @@ export default function ImportProgress({
             >
               {entry.status === 'imported' ? '+ ' : entry.status === 'skipped' ? '− ' : '✗ '}
               {entry.title}
+              {entry.reason && (
+                <span className="text-slate-600 ml-1">— {entry.reason}</span>
+              )}
             </div>
           ))}
         </div>
+      )}
+
+      {progress.done && progress.failureReason && (
+        <p className="text-sm text-red-400 bg-red-900/20 border border-red-800 rounded-lg px-3 py-2">
+          {progress.failureReason}
+        </p>
       )}
 
       {progress.done && (

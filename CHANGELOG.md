@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.4.1] - 2026-03-09
+
+### Fixed
+- All import start endpoints now check TMDB API key upfront and return a clear 400 error instead of starting a job that silently fails with "N failed"
+- `_run_folder_import` includes a `reason` field in the done event when no TMDB matches are found, so the UI can show exactly why it failed
+- `_run_import` includes the exception message as `reason` in each failed progress event
+- `useImportProgress` captures `reason` from done and progress events into state
+- `ImportProgress` shows per-item failure reasons in the log panel and a top-level banner when the whole job fails with a reason
+
 ## [1.4.0] - 2026-03-09
 
 ### Added

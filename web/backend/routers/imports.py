@@ -43,6 +43,15 @@ router = APIRouter(prefix="/import")
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _require_tmdb_key():
+    """Raise 400 immediately if the TMDB API key is not configured."""
+    if not tmdb.TMDB_API_KEY or tmdb.TMDB_API_KEY == "your_tmdb_api_key_here":
+        raise HTTPException(
+            status_code=400,
+            detail="TMDB API key not configured — add it in Settings",
+        )
+
+
 def _strip_tmdb_list_url(list_id: str) -> str:
     """Accept either a raw integer string or a full TMDB list URL."""
     prefix = "https://www.themoviedb.org/list/"
@@ -146,7 +155,7 @@ def _run_import(job_id: str, movies_to_import: list[dict], source: str, source_d
             log.error(f"[{source}] failed: {movie} — {e}")
             _job_events[job_id].append({
                 "type": "progress", "current": i, "total": len(movies_to_import),
-                "title": title, "status": "failed",
+                "title": title, "status": "failed", "reason": str(e),
             })
             log_entries.append({"title": title, "status": "failed"})
 
@@ -195,6 +204,7 @@ def _run_folder_import(job_id: str, parsed: list[dict], folder_path: str) -> Non
             "skipped": 0,
             "failed": len(parsed),
             "elapsed_seconds": 0,
+            "reason": "No TMDB matches found — check your TMDB API key in Settings or verify the filenames can be parsed",
         })
         _jobs[job_id]["done"] = True
         return
@@ -298,6 +308,7 @@ def preview_tmdb_list(list_id: str):
 @router.post("/tmdb-list/{list_id}/start")
 def start_tmdb_list_import(list_id: str):
     """Start a streaming import from a TMDB list. Returns job_id."""
+    _require_tmdb_key()
     clean_id = _strip_tmdb_list_url(list_id)
     try:
         data = tmdb._get(f"/list/{clean_id}")
@@ -357,6 +368,7 @@ def preview_trakt(
 @router.post("/trakt/start")
 def start_trakt_import(body: TraktImportBody):
     """Start a streaming import from Trakt. Returns job_id."""
+    _require_tmdb_key()
     if not trakt_client.get_client_id():
         raise HTTPException(
             status_code=400,
@@ -446,6 +458,7 @@ def preview_plex(body: PlexPreviewBody):
 @router.post("/plex/start")
 def start_plex_import(body: PlexStartBody):
     """Start a streaming import from a Plex library. Returns job_id."""
+    _require_tmdb_key()
     try:
         movies = plex_client.get_library_movies(body.plex_url, body.plex_token, body.section_key)
     except Exception as e:
@@ -492,6 +505,7 @@ def preview_folder(body: FolderPreviewBody):
 @router.post("/folder/start")
 def start_folder_import(body: FolderStartBody):
     """Scan folder, start streaming import. TMDB resolution happens in the background thread."""
+    _require_tmdb_key()
     try:
         parsed = scanner.scan_folder(body.folder_path, body.recursive)
     except ValueError as e:
