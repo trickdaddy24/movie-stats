@@ -48,19 +48,21 @@
 
 ## Screenshots
 
-> _Add screenshots here after running the app_
+<p align="center">
+  <img src="docs/screenshots/chrome_hMIrh51fZl.jpg" alt="Library Grid View" width="600"><br>
+  <em>Saved movies in a clean, filterable grid</em>
+</p>
 
-| Library | Movie Detail | Search |
-|---------|-------------|--------|
-| ![Library](<p align="center">
-  <img src="docs/screenshots/chrome_hMIrh51fZl.jpg" alt="Settings Page" width="500">
-</p>) | ![Detail](<p align="center">
-  <img src="docs/screenshots/chrome_flo0hgQxKc.png" alt="Settings Page" width="500">
-</p>) | ![Search](<p align="center">
-  <img src="docs/screenshots/chrome_pCbOhrlAKX.jpg" alt="Settings Page" width="500">
-</p>) |
+<p align="center">
+  <img src="docs/screenshots/chrome_flo0hgQxKc.png" alt="Movie Detail Page" width="600"><br>
+  <em>Full movie page with hero backdrop, cast, and artwork tabs</em>
+</p>
+## Screenshots
 
----
+<p align="center">
+  <img src="docs/screenshots/chrome_kuX8pcqkyI.png" alt="Library Grid View" width="600"><br>
+  <em>Saved movies in a clean, filterable grid</em>
+</p>
 
 ## Tech Stack
 
