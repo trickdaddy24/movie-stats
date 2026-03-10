@@ -52,7 +52,13 @@
 
 | Library | Movie Detail | Search |
 |---------|-------------|--------|
-| ![Library](/screenshots/chrome_hMIrh51fZl.jpg) | ![Detail](/screenshots/chrome_flo0hgQxKc.png) | ![Search](/screenshots/chrome_pCbOhrlAKX.jpg) |
+| ![Library](<p align="center">
+  <img src="docs/screenshots/chrome_hMIrh51fZl.jpg" alt="Settings Page" width="500">
+</p>) | ![Detail](<p align="center">
+  <img src="docs/screenshots/chrome_flo0hgQxKc.png" alt="Settings Page" width="500">
+</p>) | ![Search](<p align="center">
+  <img src="docs/screenshots/chrome_pCbOhrlAKX.jpg" alt="Settings Page" width="500">
+</p>) |
 
 ---
 
