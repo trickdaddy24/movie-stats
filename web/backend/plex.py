@@ -73,7 +73,7 @@ def get_library_movies(plex_url: str, plex_token: str, section_key: str) -> list
     with httpx.Client(timeout=30) as client:
         resp = client.get(
             url,
-            params={"type": 1},
+            params={"type": 1, "includeGuids": 1},
             headers=_movie_headers(plex_token),
         )
         resp.raise_for_status()
@@ -104,10 +104,10 @@ def get_library_movies(plex_url: str, plex_token: str, section_key: str) -> list
                             pass
                     # prefer year-matched result, fall back to exact title match
                     if cand_year and year and cand_year == year:
-                        tmdb_id = candidate.get("id")   # TMDB search returns "id" not "tmdb_id"
+                        tmdb_id = candidate.get("tmdb_id")   # TMDB search returns "id" not "tmdb_id"
                         break
                     elif candidate.get("title", "").lower() == title.lower():
-                        tmdb_id = candidate.get("id")
+                        tmdb_id = candidate.get("tmdb_id")
                         break
             except Exception:
                 pass

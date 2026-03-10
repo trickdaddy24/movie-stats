@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.7] - 2026-03-10
+
+### Fixed
+- **Plex preview/import returning 0 movies** — `get_library_movies` now passes `includeGuids=1` query param so Plex includes the `Guid` list (tmdb://, imdb:// IDs) in the bulk `/all` response; without this param the list was always absent
+- **Plex TMDB fallback used wrong key** — `candidate.get("id")` changed to `candidate.get("tmdb_id")` to match `tmdb.search_movies()` output; affected movies without a Plex-matched GUID
+- **Folder import TMDB resolution KeyError** — `hit["id"]` changed to `hit["tmdb_id"]` in `_resolve_folder_movies`; caused `KeyError: 'id'` logged as `"Search error for 'Movie': 'id'"` and silently dropped all unresolved files
+
 ## [1.4.6] - 2026-03-09
 
 ### Fixed

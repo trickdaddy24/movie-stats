@@ -204,7 +204,7 @@ def _resolve_folder_movies(parsed_movies: list[dict]) -> tuple[list[dict], list[
                 else:
                     hit = items[0] if items else None
                 if hit:
-                    resolved.append({"tmdb_id": hit["id"], "title": hit["title"]})
+                    resolved.append({"tmdb_id": hit["tmdb_id"], "title": hit["title"]})
                     matched = True
                 else:
                     log.warning(f"[folder] No TMDB result for '{m['title']}' ({m.get('year', '?')})")
