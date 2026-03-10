@@ -1,9 +1,9 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Film, Library, Search, Upload, Settings, FlaskConical } from 'lucide-react'
+import { Film, Library, Upload, Settings, FlaskConical, PlusCircle } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { getKeyStatus } from '../lib/api'
 
-const VERSION = '1.4.4'
+const VERSION = '1.4.5'
 
 function KeyStatusDot() {
   const { data: keys } = useQuery({ queryKey: ['settings-keys'], queryFn: getKeyStatus })
@@ -36,7 +36,7 @@ export default function Layout() {
             <Library className="w-4 h-4" /> Library
           </NavLink>
           <NavLink to="/search" className={NAV_LINK_CLASS}>
-            <Search className="w-4 h-4" /> Search
+            <PlusCircle className="w-4 h-4" /> Add Movie
           </NavLink>
           <NavLink to="/import" className={NAV_LINK_CLASS}>
             <Upload className="w-4 h-4" /> Import

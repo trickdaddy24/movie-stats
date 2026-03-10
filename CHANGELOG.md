@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.4.5] - 2026-03-09
+
+### Changed
+- Sidebar nav "Search" renamed to "Add Movie" with a PlusCircle icon — makes the add-movie flow immediately discoverable
+
 ## [1.4.4] - 2026-03-09
 
 ### Fixed
