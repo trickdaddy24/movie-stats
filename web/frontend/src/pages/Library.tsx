@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Search, Film, ChevronLeft, ChevronRight } from 'lucide-react'
-import { getMovies } from '../lib/api'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Search, Film, ChevronLeft, ChevronRight, ImageIcon, Loader2 } from 'lucide-react'
+import { getMovies, refreshAllArtwork } from '../lib/api'
 import MovieCard from '../components/MovieCard'
 import { useNavigate } from 'react-router-dom'
 
@@ -13,10 +13,35 @@ const GENRES = [
 
 export default function Library() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [genre, setGenre] = useState('')
   const [page, setPage] = useState(1)
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshMsg, setRefreshMsg] = useState<string | null>(null)
+
+  async function handleRefreshAllArtwork() {
+    setRefreshing(true)
+    setRefreshMsg(null)
+    try {
+      const result = await refreshAllArtwork()
+      if (!result.started) {
+        setRefreshMsg('All movies already have poster art.')
+      } else {
+        setRefreshMsg(`Fetching posters for ${result.movies_missing_poster} movies in the background…`)
+        // Refresh library after a delay to pick up newly stored posters
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ['movies'] })
+          setRefreshMsg(null)
+        }, 8000)
+      }
+    } catch {
+      setRefreshMsg('Failed to start artwork refresh.')
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['movies', search, genre, page],
@@ -46,14 +71,31 @@ export default function Library() {
             </p>
           )}
         </div>
-        <button
-          onClick={() => navigate('/search')}
-          className="flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-        >
-          <Search className="w-4 h-4" />
-          Add Movies
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefreshAllArtwork}
+            disabled={refreshing}
+            title="Re-fetch posters from TMDB and fanart.tv for movies missing artwork"
+            className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-200 text-sm font-medium px-3 py-2 rounded-lg transition-colors"
+          >
+            {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+            Refresh Posters
+          </button>
+          <button
+            onClick={() => navigate('/search')}
+            className="flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            <Search className="w-4 h-4" />
+            Add Movies
+          </button>
+        </div>
       </div>
+
+      {refreshMsg && (
+        <p className="mb-4 text-sm text-slate-300 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2">
+          {refreshMsg}
+        </p>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">

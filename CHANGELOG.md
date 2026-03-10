@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.3] - 2026-03-09
+
+### Added
+- **Refresh Posters** button in the Library header — re-fetches TMDB + fanart.tv artwork for all movies that currently have no poster stored; runs in a background thread and auto-refreshes the grid after ~8 seconds
+- `POST /api/movies/refresh-all-artwork` backend endpoint — finds movies missing a poster, fetches artwork in a daemon thread, returns immediately
+- `refreshAllArtwork()` API helper in `api.ts`
+
 ## [1.4.2] - 2026-03-09
 
 ### Added

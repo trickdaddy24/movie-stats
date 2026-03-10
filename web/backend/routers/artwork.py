@@ -1,4 +1,5 @@
 import logging
+import threading
 from fastapi import APIRouter, HTTPException
 import database as db
 import fanart
@@ -22,6 +23,40 @@ def get_artwork(movie_id: int):
             (movie_id,),
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+@router.post("/movies/refresh-all-artwork")
+def refresh_all_artwork():
+    """
+    Start a background task that re-fetches TMDB + fanart.tv artwork for every
+    movie that currently has no poster stored. Returns immediately.
+    """
+    with db.get_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT m.id, m.tmdb_id FROM movies m
+            WHERE NOT EXISTS (
+                SELECT 1 FROM artwork a
+                WHERE a.movie_id = m.id AND a.type = 'poster'
+            )
+            """
+        ).fetchall()
+        movies_missing = [dict(r) for r in rows]
+
+    def _run(movies: list[dict]) -> None:
+        for movie in movies:
+            try:
+                movie_data = tmdb.get_movie(movie["tmdb_id"])
+                tmdb_artwork = movie_data.get("artwork", [])
+                fanart_art = fanart.get_movie_art_flat(movie["tmdb_id"])
+                db.add_artwork(movie["id"], tmdb_artwork + fanart_art)
+            except Exception as e:
+                logger.warning("Artwork refresh failed for movie_id=%s: %s", movie["id"], e)
+
+    if movies_missing:
+        threading.Thread(target=_run, args=(movies_missing,), daemon=True).start()
+
+    return {"started": len(movies_missing) > 0, "movies_missing_poster": len(movies_missing)}
 
 
 @router.get("/movies/{movie_id}/artwork/refresh")
