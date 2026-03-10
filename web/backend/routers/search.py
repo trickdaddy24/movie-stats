@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Query
 import tmdb
+from tmdb import TMDBRateLimitError
 import fanart
 import database as db
 
@@ -9,7 +10,12 @@ router = APIRouter()
 
 @router.get("/search")
 def search_tmdb(q: str = Query(..., min_length=1), page: int = Query(1, ge=1)):
-    results = tmdb.search_movies(q, page)
+    try:
+        results = tmdb.search_movies(q, page)
+    except TMDBRateLimitError as e:
+        raise HTTPException(status_code=429, detail=str(e), headers={"Retry-After": str(e.retry_after)})
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"TMDB error: {e}")
     return results
 
 
@@ -17,6 +23,8 @@ def search_tmdb(q: str = Query(..., min_length=1), page: int = Query(1, ge=1)):
 def get_tmdb_movie(tmdb_id: int):
     try:
         movie = tmdb.get_movie(tmdb_id)
+    except TMDBRateLimitError as e:
+        raise HTTPException(status_code=429, detail=str(e), headers={"Retry-After": str(e.retry_after)})
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"TMDB error: {e}")
 
@@ -57,6 +65,8 @@ def add_movie_to_library(tmdb_id: int):
 
     try:
         movie_data = tmdb.get_movie(tmdb_id)
+    except TMDBRateLimitError as e:
+        raise HTTPException(status_code=429, detail=str(e), headers={"Retry-After": str(e.retry_after)})
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"TMDB error: {e}")
 

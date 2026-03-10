@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.3.0] - 2026-03-09
+
+### Added
+- Rate limit detection for TMDB — `TMDBRateLimitError` exception with `Retry-After` support; all routers return HTTP 429 (not 502) when rate limited, with `Retry-After` header forwarded to the client
+- Rate limit detection for fanart.tv — 429 responses logged with retry time instead of silently swallowed; all HTTP and unexpected errors now logged with context
+- `WARNING` log lines for both services so rate limit hits are immediately visible in the backend terminal and log files
+
+### Fixed
+- `TestMatch.tsx` imported `api` as a default export but `api.ts` had no default export — `api` was `undefined` at runtime, crashing the Test Match page; fixed by exporting `api` as a named export and updating the import
+- `GET /api/search` had no error handling — a TMDB failure would crash with an unhandled exception; now wrapped with proper 429/502 responses
+
 ## [1.2.0] - 2026-03-08
 
 ### Added

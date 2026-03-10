@@ -15,6 +15,7 @@ import fanart
 import plex as plex_client
 import scanner
 import tmdb
+from tmdb import TMDBRateLimitError
 import trakt as trakt_client
 
 # ---------------------------------------------------------------------------
@@ -253,6 +254,8 @@ def preview_tmdb_list(list_id: str):
     clean_id = _strip_tmdb_list_url(list_id)
     try:
         data = tmdb._get(f"/list/{clean_id}")
+    except TMDBRateLimitError as e:
+        raise HTTPException(status_code=429, detail=str(e), headers={"Retry-After": str(e.retry_after)})
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"TMDB error: {e}")
 
@@ -280,6 +283,8 @@ def start_tmdb_list_import(list_id: str):
     clean_id = _strip_tmdb_list_url(list_id)
     try:
         data = tmdb._get(f"/list/{clean_id}")
+    except TMDBRateLimitError as e:
+        raise HTTPException(status_code=429, detail=str(e), headers={"Retry-After": str(e.retry_after)})
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"TMDB error: {e}")
 

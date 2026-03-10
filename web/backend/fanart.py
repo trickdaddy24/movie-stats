@@ -1,8 +1,11 @@
+import logging
 import os
 import httpx
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 FANART_API_KEY = os.getenv("FANART_API_KEY", "")
 BASE_URL = "https://webservice.fanart.tv/v3"
@@ -31,9 +34,17 @@ def get_movie_art(tmdb_id: int) -> dict:
             )
             if resp.status_code == 404:
                 return {}
+            if resp.status_code == 429:
+                retry_after = int(resp.headers.get("Retry-After", 10))
+                logger.warning("fanart.tv rate limit hit for tmdb_id=%s — retry after %ds", tmdb_id, retry_after)
+                return {}
             resp.raise_for_status()
             data = resp.json()
-    except Exception:
+    except httpx.HTTPStatusError as e:
+        logger.warning("fanart.tv HTTP error for tmdb_id=%s: %s", tmdb_id, e)
+        return {}
+    except Exception as e:
+        logger.warning("fanart.tv unexpected error for tmdb_id=%s: %s", tmdb_id, e)
         return {}
 
     result: dict[str, list] = {

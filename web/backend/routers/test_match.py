@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 
 import tmdb
+from tmdb import TMDBRateLimitError
 import fanart
 
 router = APIRouter(prefix="/test", tags=["test"])
@@ -56,6 +57,8 @@ def dry_run_match(
     """
     try:
         results = tmdb.search_movies(title, page=1)
+    except TMDBRateLimitError as e:
+        raise HTTPException(status_code=429, detail=str(e), headers={"Retry-After": str(e.retry_after)})
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"TMDB search failed: {e}")
 
@@ -98,6 +101,8 @@ def live_fetch_preview(tmdb_id: int):
     """
     try:
         movie = tmdb.get_movie(tmdb_id)
+    except TMDBRateLimitError as e:
+        raise HTTPException(status_code=429, detail=str(e), headers={"Retry-After": str(e.retry_after)})
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"TMDB fetch failed: {e}")
 

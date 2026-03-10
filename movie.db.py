@@ -1,17 +1,30 @@
 """
 movie.db.py — Movie Database CLI
-Version: 1.1.0
+Version: 1.3.0
+
+Shares the same SQLite database as the web app (web/backend/movie_stats.db).
 """
 
-import sqlite3
+import sys
+import os
 import json
 import csv
 import logging
-import datetime
+import difflib
 import re
-import sys
-import os
 from pathlib import Path
+from contextlib import contextmanager
+import sqlite3
+
+# ── Paths ─────────────────────────────────────────────────────────────────────
+_BASE      = Path(__file__).parent
+DB_FILE    = _BASE / "web" / "backend" / "movie_stats.db"
+LOG_FILE   = _BASE / "movie_db.log"
+EXPORT_DIR = _BASE / "exports"
+ENV_PATH   = _BASE / "web" / "backend" / ".env"
+
+# Add web/backend to sys.path so we can import tmdb / fanart modules
+sys.path.insert(0, str(_BASE / "web" / "backend"))
 
 # ANSI colour helpers (auto-disable when not a TTY)
 _USE_COLOR = hasattr(sys.stdout, 'isatty') and sys.stdout.isatty()
@@ -24,218 +37,278 @@ def _c(text: str, code: str) -> str:
 def green(t): return _c(t, "92")
 def red(t):   return _c(t, "91")
 def dim(t):   return _c(t, "2")
+def bold(t):  return _c(t, "1")
+def blue(t):  return _c(t, "94")
+def yellow(t):return _c(t, "93")
 
-VERSION = "1.1.0"
-DB_FILE = "movie_db.db"
-LOG_FILE = "movie_db.log"
-EXPORT_DIR = Path("exports")
-ENV_PATH = Path(__file__).parent / "web" / "backend" / ".env"
-
-GENRES = ["Action", "Comedy", "Drama", "Sci-Fi", "Horror", "Thriller", "Romance", "Documentary", "Animation", "Other"]
-VALID_STATUSES = ["available", "archived"]
-EDITABLE_FIELDS = ["director", "release_date", "status"]
-
-MEDIA_TYPES = ["movie", "show"]
+VERSION = "1.3.0"
 
 API_KEYS = [
-    {
-        "key":      "TMDB_API_KEY",
-        "label":    "TMDB API Key",
-        "required": True,
-        "hint":     "https://www.themoviedb.org/settings/api",
-    },
-    {
-        "key":      "FANART_API_KEY",
-        "label":    "fanart.tv API Key",
-        "required": False,
-        "hint":     "https://fanart.tv/get-an-api-key/",
-    },
-    {
-        "key":      "TRAKT_CLIENT_ID",
-        "label":    "Trakt Client ID",
-        "required": False,
-        "hint":     "https://trakt.tv/oauth/applications",
-    },
-    {
-        "key":      "PLEX_URL",
-        "label":    "Plex Server URL",
-        "required": False,
-        "hint":     "e.g. http://192.168.1.100:32400",
-    },
-    {
-        "key":      "PLEX_TOKEN",
-        "label":    "Plex Token",
-        "required": False,
-        "hint":     "https://support.plex.tv/articles/204059436/",
-    },
+    {"key": "TMDB_API_KEY",    "label": "TMDB API Key",    "required": True,  "hint": "https://www.themoviedb.org/settings/api"},
+    {"key": "FANART_API_KEY",  "label": "fanart.tv API Key","required": False, "hint": "https://fanart.tv/get-an-api-key/"},
+    {"key": "TRAKT_CLIENT_ID", "label": "Trakt Client ID", "required": False, "hint": "https://trakt.tv/oauth/applications"},
+    {"key": "PLEX_URL",        "label": "Plex Server URL",  "required": False, "hint": "e.g. http://192.168.1.100:32400"},
+    {"key": "PLEX_TOKEN",      "label": "Plex Token",       "required": False, "hint": "https://support.plex.tv/articles/204059436/"},
 ]
 
-logging.basicConfig(filename=LOG_FILE, level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-def clean(value: str) -> str:
-    return re.sub(r'[;\"\'\\]', '', value.strip()) if value else ""
-
-def valid_rating(r) -> bool:
-    try: return 1.0 <= float(r) <= 10.0
-    except (ValueError, TypeError): return False
-
-def valid_date(d: str) -> bool:
-    try:
-        return bool(re.match(r'^\d{2}-\d{2}-\d{4}$', d)) and bool(datetime.datetime.strptime(d, "%m-%d-%Y"))
-    except ValueError:
-        return False
+logging.basicConfig(
+    filename=str(LOG_FILE), level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s"
+)
 
 
 # ── Database ──────────────────────────────────────────────────────────────────
 
+@contextmanager
 def get_db():
-    return sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(str(DB_FILE))
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
 
 def setup_db():
+    """Create the shared web-app schema if it doesn't already exist."""
     with get_db() as conn:
-        conn.execute("""
+        conn.executescript("""
             CREATE TABLE IF NOT EXISTS movies (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                display_id   TEXT UNIQUE,
-                title        TEXT NOT NULL,
-                director     TEXT NOT NULL,
-                genre        TEXT NOT NULL,
-                rating       REAL NOT NULL,
-                release_date TEXT NOT NULL,
-                status       TEXT NOT NULL DEFAULT 'available',
-                media_type   TEXT NOT NULL DEFAULT 'movie'
-            )
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tmdb_id INTEGER UNIQUE NOT NULL,
+                imdb_id TEXT,
+                title TEXT NOT NULL,
+                original_title TEXT,
+                overview TEXT,
+                release_date TEXT,
+                runtime INTEGER,
+                rating REAL,
+                vote_count INTEGER,
+                tagline TEXT,
+                status TEXT DEFAULT 'active',
+                added_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS external_ids (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                movie_id INTEGER REFERENCES movies(id) ON DELETE CASCADE,
+                source TEXT NOT NULL,
+                external_id TEXT NOT NULL,
+                UNIQUE(movie_id, source)
+            );
+
+            CREATE TABLE IF NOT EXISTS cast_crew (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                movie_id INTEGER REFERENCES movies(id) ON DELETE CASCADE,
+                tmdb_person_id INTEGER,
+                name TEXT,
+                role TEXT,
+                character_name TEXT,
+                job TEXT,
+                department TEXT,
+                display_order INTEGER,
+                profile_path TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS genres (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                movie_id INTEGER REFERENCES movies(id) ON DELETE CASCADE,
+                name TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS artwork (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                movie_id INTEGER REFERENCES movies(id) ON DELETE CASCADE,
+                source TEXT,
+                type TEXT,
+                url TEXT,
+                language TEXT,
+                likes INTEGER DEFAULT 0
+            );
+
+            CREATE TABLE IF NOT EXISTS import_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source TEXT NOT NULL,
+                source_detail TEXT,
+                started_at TEXT NOT NULL,
+                finished_at TEXT,
+                total INTEGER DEFAULT 0,
+                imported INTEGER DEFAULT 0,
+                skipped INTEGER DEFAULT 0,
+                failed INTEGER DEFAULT 0,
+                log_json TEXT DEFAULT '[]'
+            );
         """)
-        # migrate: add media_type column to existing DBs
-        try:
-            conn.execute("ALTER TABLE movies ADD COLUMN media_type TEXT NOT NULL DEFAULT 'movie'")
-        except sqlite3.OperationalError:
-            pass
     logging.info("DB ready")
 
-def next_display_id(conn, media_type: str) -> str:
-    prefix = "mov" if media_type == "movie" else "shw"
-    row = conn.execute(
-        f"SELECT MAX(CAST(SUBSTR(display_id, 5) AS INTEGER)) FROM movies WHERE media_type=?", (media_type,)
-    ).fetchone()[0]
-    return f"{prefix}.{(row or 0) + 1:03d}"
 
 def count_all() -> dict:
     with get_db() as conn:
-        movies = conn.execute("SELECT COUNT(*) FROM movies WHERE media_type='movie'").fetchone()[0]
-        shows  = conn.execute("SELECT COUNT(*) FROM movies WHERE media_type='show'").fetchone()[0]
-    return {"movies": movies, "shows": shows, "total": movies + shows}
+        total = conn.execute("SELECT COUNT(*) FROM movies").fetchone()[0]
+    return {"total": total}
 
 
-# ── CRUD ──────────────────────────────────────────────────────────────────────
+# ── Library display ───────────────────────────────────────────────────────────
 
-def add_entry(title, director, genre, rating, release_date, media_type="movie"):
-    errors = []
-    if not title:    errors.append("title required")
-    if not director: errors.append("director required")
-    if genre not in GENRES: errors.append(f"genre must be one of: {', '.join(GENRES)}")
-    if not valid_rating(rating): errors.append("rating must be 1.0–10.0")
-    if not valid_date(release_date): errors.append("date must be mm-dd-yyyy")
-    if media_type not in MEDIA_TYPES: errors.append(f"type must be: {', '.join(MEDIA_TYPES)}")
-    if errors:
-        for e in errors: print(f"  ✗ {e}")
-        return
+def list_entries(search: str = None):
     with get_db() as conn:
-        did = next_display_id(conn, media_type)
-        conn.execute(
-            "INSERT INTO movies (display_id, title, director, genre, rating, release_date, status, media_type) VALUES (?,?,?,?,?,?,?,?)",
-            (did, title, director, genre, float(rating), release_date, "available", media_type)
-        )
-    label = "Movie" if media_type == "movie" else "Show"
-    print(f"✓ Added {label} {did}: {title}")
-    logging.info(f"Added {did} {title} [{media_type}]")
+        if search:
+            rows = conn.execute(
+                "SELECT id, tmdb_id, title, release_date, rating, runtime, status "
+                "FROM movies WHERE title LIKE ? OR original_title LIKE ? ORDER BY title LIMIT 100",
+                (f"%{search}%", f"%{search}%")
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT id, tmdb_id, title, release_date, rating, runtime, status "
+                "FROM movies ORDER BY added_at DESC LIMIT 100"
+            ).fetchall()
 
-def view_entry(display_id: str):
-    with get_db() as conn:
-        row = conn.execute("SELECT * FROM movies WHERE display_id=?", (display_id,)).fetchone()
-    if not row:
-        print("  No record found.")
-        return
-    labels = ["ID", "Title", "Director", "Genre", "Rating", "Release Date", "Status", "Type"]
-    values = [row[1], row[2], row[3], row[4], f"{row[5]:.1f}", row[6], row[7], row[8]]
-    for l, v in zip(labels, values):
-        print(f"  {l:<14}: {v}")
-
-def edit_entry(display_id: str, field: str, value: str):
-    if field not in EDITABLE_FIELDS:
-        print(f"  ✗ Editable fields: {', '.join(EDITABLE_FIELDS)}")
-        return
-    if field == "release_date" and not valid_date(value):
-        print("  ✗ Date must be mm-dd-yyyy")
-        return
-    if field == "status" and value not in VALID_STATUSES:
-        print(f"  ✗ Status must be: {', '.join(VALID_STATUSES)}")
-        return
-    with get_db() as conn:
-        n = conn.execute(f"UPDATE movies SET {field}=? WHERE display_id=?", (value, display_id)).rowcount
-    if n: print(f"✓ Updated {display_id}")
-    else: print("  No record found.")
-    logging.info(f"Edit {display_id} {field}={value}")
-
-def delete_entry(display_id: str):
-    with get_db() as conn:
-        n = conn.execute("DELETE FROM movies WHERE display_id=?", (display_id,)).rowcount
-    if n: print(f"✓ Deleted {display_id}")
-    else: print("  No record found.")
-    logging.info(f"Deleted {display_id}")
-
-def list_entries(media_type: str = None):
-    query = "SELECT display_id, title, director, genre, rating, status, media_type FROM movies"
-    params = ()
-    if media_type:
-        query += " WHERE media_type=?"
-        params = (media_type,)
-    query += " ORDER BY media_type, display_id"
-    with get_db() as conn:
-        rows = conn.execute(query, params).fetchall()
     if not rows:
-        print("  (no records)")
+        print("  (no movies in library)")
         return
-    print(f"  {'ID':<9} {'Type':<6} {'Title':<28} {'Director':<20} {'Genre':<12} {'Rating':>6}  Status")
-    print("  " + "─" * 95)
-    for r in rows:
-        print(f"  {r[0]:<9} {r[6]:<6} {r[1]:<28} {r[2]:<20} {r[3]:<12} {r[4]:>6.1f}  {r[5]}")
 
-def search_entries(query: str):
-    q = f"%{query}%"
+    print(f"\n  {'TMDB ID':<10} {'Title':<42} {'Year':<6} {'Rating':>6}  {'Runtime':<9}  Status")
+    print("  " + "─" * 88)
+    for r in rows:
+        year    = r["release_date"][:4] if r["release_date"] else "—"
+        runtime = f"{r['runtime']//60}h{r['runtime']%60:02d}m" if r["runtime"] else "—"
+        rating  = f"{r['rating']:.1f}" if r["rating"] else "—"
+        title   = r["title"][:41]
+        print(f"  {r['tmdb_id']:<10} {title:<42} {year:<6} {rating:>6}  {runtime:<9}  {r['status']}")
+
+    if len(rows) == 100:
+        print(f"\n  {dim('Showing 100 most recent — use Search to narrow down.')}")
+
+
+def view_entry(tmdb_id: int):
     with get_db() as conn:
-        rows = conn.execute(
-            "SELECT display_id, title, director, genre, rating, media_type FROM movies WHERE title LIKE ? OR director LIKE ?", (q, q)
+        row = conn.execute("SELECT * FROM movies WHERE tmdb_id=?", (tmdb_id,)).fetchone()
+        if not row:
+            print(f"  {red('✗')} No movie with TMDB ID {tmdb_id}.")
+            return
+        movie = dict(row)
+
+        genres = [r[0] for r in conn.execute(
+            "SELECT name FROM genres WHERE movie_id=?", (movie["id"],)
+        ).fetchall()]
+
+        cast = conn.execute(
+            "SELECT name, character_name FROM cast_crew "
+            "WHERE movie_id=? AND role='cast' ORDER BY display_order LIMIT 5",
+            (movie["id"],)
         ).fetchall()
-    if not rows:
-        print("  No results.")
-        return
-    for r in rows:
-        print(f"  {r[0]}  [{r[5]}]  {r[1]}  ({r[2]})  {r[3]}  {r[4]:.1f}")
+
+        crew = conn.execute(
+            "SELECT name, job FROM cast_crew "
+            "WHERE movie_id=? AND role='crew' ORDER BY display_order LIMIT 5",
+            (movie["id"],)
+        ).fetchall()
+
+        art_counts = conn.execute(
+            "SELECT type, COUNT(*) FROM artwork WHERE movie_id=? GROUP BY type",
+            (movie["id"],)
+        ).fetchall()
+
+    print()
+    print(f"  {bold(movie['title'])}")
+    if movie.get("tagline"):
+        print(f"  {dim(movie['tagline'])}")
+    print()
+
+    year    = movie["release_date"][:4] if movie.get("release_date") else "—"
+    runtime = f"{movie['runtime']//60}h {movie['runtime']%60}m" if movie.get("runtime") else "—"
+    rating  = f"{movie['rating']:.1f}" if movie.get("rating") else "—"
+
+    fields = [
+        ("TMDB ID",    str(movie["tmdb_id"])),
+        ("IMDB ID",    movie.get("imdb_id") or "—"),
+        ("Year",       year),
+        ("Runtime",    runtime),
+        ("Rating",     f"{rating}  ({movie.get('vote_count') or 0:,} votes)"),
+        ("Genres",     ", ".join(genres) or "—"),
+        ("Status",     movie.get("status", "active")),
+        ("Added",      (movie.get("added_at") or "")[:10] or "—"),
+    ]
+    for label, val in fields:
+        print(f"  {label:<14}: {val}")
+
+    if movie.get("overview"):
+        print(f"\n  Overview:\n  {movie['overview'][:320]}")
+
+    if cast:
+        print(f"\n  Cast (top 5):")
+        for p in cast:
+            print(f"    {p['name']:<26}  as  {p['character_name'] or '—'}")
+
+    if crew:
+        print(f"\n  Key Crew:")
+        for p in crew:
+            print(f"    {p['name']:<26}  {p['job'] or '—'}")
+
+    if art_counts:
+        art_str = "  ".join(f"{t}×{c}" for t, c in art_counts)
+        print(f"\n  Artwork: {art_str}")
+
+
+def delete_entry(tmdb_id: int):
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT id, title FROM movies WHERE tmdb_id=?", (tmdb_id,)
+        ).fetchone()
+        if not row:
+            print(f"  {red('✗')} No movie with TMDB ID {tmdb_id}.")
+            return
+        confirm = input(f"  Delete \"{row['title']}\" (TMDB {tmdb_id})? (yes/no): ").strip().lower()
+        if confirm not in ("yes", "y"):
+            print("  Cancelled.")
+            return
+        conn.execute("DELETE FROM movies WHERE id=?", (row["id"],))
+    print(f"  {green('✓')} Deleted {row['title']}")
+    logging.info(f"Deleted TMDB {tmdb_id} — {row['title']}")
+
 
 def show_totals():
-    counts = count_all()
-    print(f"\n  {'Movies':<10}: {counts['movies']}")
-    print(f"  {'Shows':<10}: {counts['shows']}")
-    print(f"  {'Total':<10}: {counts['total']}")
     with get_db() as conn:
-        genres = conn.execute(
-            "SELECT genre, COUNT(*) FROM movies GROUP BY genre ORDER BY COUNT(*) DESC"
-        ).fetchall()
-        statuses = conn.execute(
+        total     = conn.execute("SELECT COUNT(*) FROM movies").fetchone()[0]
+        art_total = conn.execute("SELECT COUNT(*) FROM artwork").fetchone()[0]
+        cc_total  = conn.execute("SELECT COUNT(*) FROM cast_crew").fetchone()[0]
+        statuses  = conn.execute(
             "SELECT status, COUNT(*) FROM movies GROUP BY status"
         ).fetchall()
-    if genres:
-        print(f"\n  By Genre:")
-        for g, c in genres:
-            print(f"    {g:<16}: {c}")
+        genres = conn.execute(
+            "SELECT g.name, COUNT(*) as c FROM genres g "
+            "GROUP BY g.name ORDER BY c DESC LIMIT 10"
+        ).fetchall()
+        recent = conn.execute(
+            "SELECT title, release_date FROM movies ORDER BY added_at DESC LIMIT 5"
+        ).fetchall()
+
+    print(f"\n  Total movies   : {green(str(total))}")
+    print(f"  Artwork rows   : {art_total}")
+    print(f"  Cast/Crew rows : {cc_total}")
+
     if statuses:
         print(f"\n  By Status:")
         for s, c in statuses:
             print(f"    {s:<16}: {c}")
+
+    if genres:
+        print(f"\n  Top Genres:")
+        for g, c in genres:
+            print(f"    {g:<22}: {c}")
+
+    if recent:
+        print(f"\n  Recently Added:")
+        for r in recent:
+            year = r["release_date"][:4] if r["release_date"] else "—"
+            print(f"    {r['title']}  ({year})")
 
 
 # ── Export / Import ───────────────────────────────────────────────────────────
@@ -244,73 +317,269 @@ def export_json():
     EXPORT_DIR.mkdir(exist_ok=True)
     path = EXPORT_DIR / "movie_export.json"
     with get_db() as conn:
-        rows = conn.execute("SELECT display_id,title,director,genre,rating,release_date,status,media_type FROM movies").fetchall()
-    data = [{"id":r[0],"title":r[1],"director":r[2],"genre":r[3],"rating":r[4],"release_date":r[5],"status":r[6],"media_type":r[7]} for r in rows]
-    path.write_text(json.dumps(data, indent=2))
-    print(f"✓ Exported {len(data)} entries → {path}")
+        rows = conn.execute(
+            "SELECT tmdb_id, imdb_id, title, original_title, release_date, runtime, "
+            "rating, vote_count, tagline, overview, status, added_at "
+            "FROM movies ORDER BY title"
+        ).fetchall()
+    data = [dict(r) for r in rows]
+    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    print(f"  {green('✓')} Exported {len(data)} movies → {path}")
     logging.info(f"Exported {len(data)} to JSON")
 
-def import_json():
-    path = EXPORT_DIR / "movie_export.json"
-    if not path.exists():
-        print(f"  ✗ {path} not found")
-        return
-    data = json.loads(path.read_text())
-    imported = skipped = 0
-    with get_db() as conn:
-        for m in data:
-            if not all([m.get("title"), m.get("director"), valid_rating(m.get("rating")),
-                        valid_date(m.get("release_date", "")), m.get("status","") in VALID_STATUSES]):
-                print(f"  ✗ Skipping {m.get('id','?')}: invalid data")
-                skipped += 1
-                continue
-            conn.execute(
-                "INSERT OR REPLACE INTO movies (display_id,title,director,genre,rating,release_date,status,media_type) VALUES (?,?,?,?,?,?,?,?)",
-                (m["id"], m["title"], m["director"], m.get("genre","Other"), float(m["rating"]),
-                 m["release_date"], m["status"], m.get("media_type","movie"))
-            )
-            imported += 1
-    print(f"✓ Imported {imported}, skipped {skipped}")
-    logging.info(f"JSON import: {imported} in, {skipped} skipped")
 
 def export_csv():
     EXPORT_DIR.mkdir(exist_ok=True)
     path = EXPORT_DIR / "movie_export.csv"
+    fields = ["tmdb_id", "imdb_id", "title", "original_title", "release_date",
+              "runtime", "rating", "vote_count", "tagline", "status", "added_at"]
     with get_db() as conn:
-        rows = conn.execute("SELECT display_id,title,director,genre,rating,release_date,status,media_type FROM movies").fetchall()
-    with path.open("w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["display_id","title","director","genre","rating","release_date","status","media_type"])
-        w.writerows(rows)
-    print(f"✓ Exported {len(rows)} entries → {path}")
+        rows = conn.execute(
+            f"SELECT {', '.join(fields)} FROM movies ORDER BY title"
+        ).fetchall()
+    with path.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=fields)
+        w.writeheader()
+        w.writerows([dict(r) for r in rows])
+    print(f"  {green('✓')} Exported {len(rows)} movies → {path}")
     logging.info(f"Exported {len(rows)} to CSV")
+
+
+def import_json():
+    path = EXPORT_DIR / "movie_export.json"
+    if not path.exists():
+        print(f"  {red('✗')} {path} not found")
+        return
+    data = json.loads(path.read_text(encoding="utf-8"))
+    imported = skipped = 0
+    with get_db() as conn:
+        for m in data:
+            if not m.get("tmdb_id") or not m.get("title"):
+                skipped += 1
+                continue
+            try:
+                conn.execute(
+                    """INSERT INTO movies
+                       (tmdb_id, imdb_id, title, original_title, release_date, runtime,
+                        rating, vote_count, tagline, overview, status, added_at)
+                       VALUES
+                       (:tmdb_id, :imdb_id, :title, :original_title, :release_date, :runtime,
+                        :rating, :vote_count, :tagline, :overview, :status, :added_at)
+                       ON CONFLICT(tmdb_id) DO NOTHING""",
+                    {k: m.get(k) for k in [
+                        "tmdb_id", "imdb_id", "title", "original_title", "release_date",
+                        "runtime", "rating", "vote_count", "tagline", "overview", "status", "added_at"
+                    ]}
+                )
+                imported += 1
+            except Exception as e:
+                print(f"  ✗ Skipping TMDB {m.get('tmdb_id')}: {e}")
+                skipped += 1
+    print(f"  {green('✓')} Imported {imported}, skipped {skipped}")
+    logging.info(f"JSON import: {imported} in, {skipped} skipped")
+
 
 def import_csv():
     path = EXPORT_DIR / "movie_export.csv"
     if not path.exists():
-        print(f"  ✗ {path} not found")
+        print(f"  {red('✗')} {path} not found")
         return
     imported = skipped = 0
-    with path.open(newline="") as f:
+    with path.open(newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
     with get_db() as conn:
         for m in rows:
+            if not m.get("tmdb_id") or not m.get("title"):
+                skipped += 1
+                continue
             try:
-                rating = float(m["rating"])
-                if not all([m["title"], m["director"], valid_rating(rating),
-                            valid_date(m["release_date"]), m["status"] in VALID_STATUSES]):
-                    raise ValueError("invalid fields")
                 conn.execute(
-                    "INSERT OR REPLACE INTO movies (display_id,title,director,genre,rating,release_date,status,media_type) VALUES (?,?,?,?,?,?,?,?)",
-                    (m["display_id"], m["title"], m["director"], m["genre"], rating,
-                     m["release_date"], m["status"], m.get("media_type","movie"))
+                    """INSERT INTO movies
+                       (tmdb_id, imdb_id, title, original_title, release_date, runtime,
+                        rating, vote_count, tagline, status, added_at)
+                       VALUES
+                       (:tmdb_id, :imdb_id, :title, :original_title, :release_date, :runtime,
+                        :rating, :vote_count, :tagline, :status, :added_at)
+                       ON CONFLICT(tmdb_id) DO NOTHING""",
+                    {k: m.get(k) or None for k in [
+                        "tmdb_id", "imdb_id", "title", "original_title", "release_date",
+                        "runtime", "rating", "vote_count", "tagline", "status", "added_at"
+                    ]}
                 )
                 imported += 1
-            except (ValueError, KeyError) as e:
-                print(f"  ✗ Skipping {m.get('display_id','?')}: {e}")
+            except Exception as e:
+                print(f"  ✗ Skipping TMDB {m.get('tmdb_id')}: {e}")
                 skipped += 1
-    print(f"✓ Imported {imported}, skipped {skipped}")
+    print(f"  {green('✓')} Imported {imported}, skipped {skipped}")
     logging.info(f"CSV import: {imported} in, {skipped} skipped")
+
+
+# ── Test Match ────────────────────────────────────────────────────────────────
+
+def _match_score(candidate_title: str, candidate_year, query_title: str, query_year) -> int:
+    ratio = difflib.SequenceMatcher(
+        None, query_title.lower().strip(), candidate_title.lower().strip()
+    ).ratio()
+    score = int(ratio * 70)
+    if query_year and candidate_year:
+        if query_year == candidate_year:
+            score += 30
+        elif abs(query_year - candidate_year) == 1:
+            score += 10
+    elif not query_year:
+        score += 15
+    return min(score, 100)
+
+
+def _confidence_label(score: int) -> str:
+    if score >= 90: return "excellent"
+    if score >= 70: return "good"
+    if score >= 50: return "fair"
+    return "low"
+
+
+def _confidence_color(label: str):
+    return {"excellent": green, "good": blue, "fair": yellow, "low": red}.get(label, dim)
+
+
+def test_match_cli():
+    # Load .env so the tmdb module picks up TMDB_API_KEY
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(ENV_PATH)
+    except ImportError:
+        pass
+
+    try:
+        import tmdb as tmdb_mod
+    except ImportError:
+        print(f"\n  {red('✗')} Could not import tmdb module from web/backend/.")
+        print("  Make sure you are running this script from the MovieStats directory.")
+        return
+
+    print(f"\n  {bold('TMDB Match Test')}  —  dry run, nothing is saved\n")
+
+    title = input("  Movie title: ").strip()
+    if not title:
+        print("  Cancelled.")
+        return
+
+    year_str = input("  Year (optional — press Enter to skip): ").strip()
+    query_year = int(year_str) if year_str.isdigit() else None
+
+    print(f"\n  Searching TMDB for \"{title}\"…\n")
+    try:
+        results = tmdb_mod.search_movies(title, page=1)
+    except Exception as e:
+        print(f"  {red('✗')} TMDB search failed: {e}")
+        print("  Check that your TMDB API key is configured (Configure API Keys).")
+        return
+
+    raw_results = results.get("results", [])[:10]
+    total       = results.get("total_results", 0)
+
+    candidates = []
+    for item in raw_results:
+        ct  = item.get("title", "")
+        rd  = item.get("release_date") or ""
+        cy  = int(rd[:4]) if rd and len(rd) >= 4 else None
+        score = _match_score(ct, cy, title, query_year)
+        candidates.append({
+            "tmdb_id":    item.get("tmdb_id"),
+            "title":      ct,
+            "year":       cy,
+            "overview":   (item.get("overview") or "")[:120],
+            "score":      score,
+            "confidence": _confidence_label(score),
+        })
+    candidates.sort(key=lambda x: x["score"], reverse=True)
+
+    print(f"  {total:,} results from TMDB — showing top {len(candidates)} with match scores\n")
+    print(f"  {'#':<4} {'TMDB ID':<10} {'Score':<6}  {'Confidence':<11}  {'Title':<38}  Year")
+    print("  " + "─" * 82)
+
+    for i, c in enumerate(candidates, 1):
+        cf       = c["confidence"]
+        color    = _confidence_color(cf)
+        score_s  = color(f"{c['score']}%")
+        conf_s   = color(cf)
+        title_s  = c["title"][:37]
+        print(f"  {i:<4} {c['tmdb_id']:<10} {score_s:<6}  {conf_s:<11}  {title_s:<38}  {c['year'] or '—'}")
+
+    if not candidates:
+        print("  No results found.")
+        return
+
+    print()
+    pick = input("  Enter # for a live full fetch (or Enter to skip): ").strip()
+    if not pick.isdigit() or not (1 <= int(pick) <= len(candidates)):
+        return
+
+    selected = candidates[int(pick) - 1]
+    print(f"\n  Fetching full details for TMDB {selected['tmdb_id']} — {selected['title']}…\n")
+
+    try:
+        movie = tmdb_mod.get_movie(selected["tmdb_id"])
+    except Exception as e:
+        print(f"  {red('✗')} TMDB fetch failed: {e}")
+        return
+
+    cast   = movie.get("cast", [])
+    crew   = movie.get("crew", [])
+    art    = movie.get("artwork", [])
+    genres = movie.get("genres", [])
+    ext    = movie.get("external_ids", {})
+
+    fanart_count = 0
+    try:
+        import fanart as fanart_mod
+        fanart_art   = fanart_mod.get_movie_art_flat(selected["tmdb_id"])
+        fanart_count = len(fanart_art)
+    except Exception:
+        pass
+
+    rd      = movie.get("release_date") or ""
+    year    = rd[:4] if rd else "—"
+    runtime = movie.get("runtime")
+    rt_str  = f"{runtime//60}h {runtime%60}m" if runtime else "—"
+    rating  = movie.get("rating")
+    rt_disp = f"{rating:.1f}" if rating else "—"
+
+    print(f"  {bold(movie.get('title', ''))}")
+    if movie.get("tagline"):
+        print(f"  {dim(movie['tagline'])}")
+    print()
+    print(f"  {'Year':<18}: {year}")
+    print(f"  {'Runtime':<18}: {rt_str}")
+    print(f"  {'Rating':<18}: {rt_disp}  ({movie.get('vote_count', 0):,} votes)")
+    print(f"  {'Genres':<18}: {', '.join(genres) or '—'}")
+    print(f"  {'TMDB ID':<18}: {movie.get('tmdb_id')}")
+    print(f"  {'IMDB ID':<18}: {movie.get('imdb_id') or '—'}")
+    for k, v in ext.items():
+        if v:
+            print(f"  {k:<18}: {v}")
+
+    if movie.get("overview"):
+        print(f"\n  Overview:\n  {movie['overview'][:320]}")
+
+    print(f"\n  {bold('Would be saved to DB:')}")
+    print(f"    Movies row      : 1")
+    print(f"    Cast + Crew     : {len(cast) + len(crew)}")
+    print(f"    Genres          : {len(genres)}")
+    print(f"    Artwork (TMDB)  : {len(art)}")
+    print(f"    Artwork (fanart): {fanart_count}")
+
+    if cast[:5]:
+        print(f"\n  Cast (top 5):")
+        for p in cast[:5]:
+            print(f"    {p.get('name', ''):<28}  as  {p.get('character_name') or '—'}")
+
+    if crew[:5]:
+        print(f"\n  Key Crew:")
+        for p in crew[:5]:
+            print(f"    {p.get('name', ''):<28}  {p.get('job') or '—'}")
+
+    print(f"\n  {dim('Preview only — nothing was saved.')}")
 
 
 # ── API Key Setup ─────────────────────────────────────────────────────────────
@@ -325,6 +594,7 @@ def read_env() -> dict:
                 existing[k.strip()] = v.strip()
     return existing
 
+
 def write_env(values: dict):
     ENV_PATH.parent.mkdir(parents=True, exist_ok=True)
     lines = []
@@ -334,6 +604,7 @@ def write_env(values: dict):
         lines.append(f"{cfg['key']}={values.get(cfg['key'], '')}")
         lines.append("")
     ENV_PATH.write_text("\n".join(lines))
+
 
 def setup_api_keys():
     print(f"\n  API Key Setup  —  saving to {ENV_PATH}")
@@ -377,12 +648,15 @@ def setup_api_keys():
     else:
         print(f"  {red('✗')} Cancelled.")
 
+
 def show_api_keys():
     existing = read_env()
     print(f"\n  API Key Status  —  {ENV_PATH}\n")
     for cfg in API_KEYS:
-        val = existing.get(cfg["key"], "")
-        is_set = bool(val) and val not in (f"your_{cfg['key'].lower()}_here", "http://192.168.1.100:32400")
+        val    = existing.get(cfg["key"], "")
+        is_set = bool(val) and val not in (
+            f"your_{cfg['key'].lower()}_here", "http://192.168.1.100:32400"
+        )
         tag = dim("[required]") if cfg["required"] else dim("[optional]")
         if is_set:
             masked = val[:4] + "*" * max(0, len(val) - 4)
@@ -392,56 +666,48 @@ def show_api_keys():
         print(f"  {cfg['label']:<22} {tag:<22}  {status}")
 
 
+# ── Data submenu ──────────────────────────────────────────────────────────────
+
+def data_submenu():
+    while True:
+        print(f"\n  {bold('Data Import / Export')}")
+        opts = ["Export JSON", "Import JSON", "Export CSV", "Import CSV", "Back"]
+        for i, o in enumerate(opts, 1):
+            print(f"  {i}. {o}")
+
+        raw = input(f"\n  Choice (1-{len(opts)}): ").strip()
+        if not raw.isdigit() or not (1 <= int(raw) <= len(opts)):
+            print("  ✗ Invalid choice.")
+            continue
+
+        action = opts[int(raw) - 1]
+        if   action == "Export JSON": export_json()
+        elif action == "Import JSON": import_json()
+        elif action == "Export CSV":  export_csv()
+        elif action == "Import CSV":  import_csv()
+        elif action == "Back":        return
+
+
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
-def prompt(label: str, required=True) -> str:
-    while True:
-        val = clean(input(f"  {label}: "))
-        if val or not required:
-            return val
-        print("  ✗ Required.")
+def clean(s: str) -> str:
+    return re.sub(r'[;\"\'\\]', '', s.strip()) if s else ""
 
-def pick_genre() -> str:
-    for i, g in enumerate(GENRES, 1):
-        print(f"  {i}. {g}")
-    while True:
-        try:
-            n = int(input(f"  Genre (1-{len(GENRES)}): "))
-            if 1 <= n <= len(GENRES):
-                g = GENRES[n - 1]
-                if g == "Other":
-                    custom = clean(input("  Custom genre name: "))
-                    return custom or "Other"
-                return g
-        except ValueError:
-            pass
-        print(f"  ✗ Enter 1–{len(GENRES)}.")
-
-def pick_media_type() -> str:
-    print("  1. Movie")
-    print("  2. Show")
-    while True:
-        val = clean(input("  Type (1/2): "))
-        if val == "1": return "movie"
-        if val == "2": return "show"
-        print("  ✗ Enter 1 or 2.")
-
-def get_display_id(prompt_text="ID (e.g. mov.001 or shw.001)") -> str:
-    raw = clean(input(f"  {prompt_text}: ")).lower()
-    if not raw.startswith(("mov.", "shw.")):
-        raw = f"mov.{raw.zfill(3)}"
-    return raw
 
 def cli():
     counts = count_all()
     print(f"\n=== Movie Database  v{VERSION} ===")
-    print(f"  Movies: {green(str(counts['movies']))}  |  Shows: {green(str(counts['shows']))}  |  Total: {green(str(counts['total']))}")
+    db_exists = DB_FILE.exists()
+    db_label  = str(DB_FILE) if db_exists else red(str(DB_FILE) + " (not found)")
+    print(f"  DB: {db_label}")
+    print(f"  Library: {green(str(counts['total']))} movies")
 
     while True:
-        has = counts["total"] > 0
-        opts = ["Add Entry", "Totals & Stats"]
-        if has: opts += ["List All", "List Movies", "List Shows", "View Entry", "Edit Entry", "Delete Entry", "Search"]
-        opts += ["Export JSON", "Import JSON", "Export CSV", "Import CSV"]
+        has  = counts["total"] > 0
+        opts = ["Totals & Stats"]
+        if has:
+            opts += ["List Library", "View Movie", "Delete Movie", "Search Library"]
+        opts += ["Test Match (TMDB Dry Run)", "Data Import / Export"]
         opts += ["─── Settings ───", "Configure API Keys", "Show API Keys", "Exit"]
 
         print()
@@ -461,60 +727,36 @@ def cli():
             print("  ✗ That is a section header, not an option.")
             continue
 
-        if action == "Add Entry":
-            media_type = pick_media_type()
-            title    = prompt("Title")
-            director = prompt("Director / Creator")
-            genre    = pick_genre()
-            while True:
-                try:
-                    rating = float(input("  Rating (1.0-10.0): "))
-                    if valid_rating(rating): break
-                except ValueError: pass
-                print("  ✗ Must be 1.0–10.0.")
-            while True:
-                rd = clean(input("  Release date (mm-dd-yyyy): "))
-                if valid_date(rd): break
-                print("  ✗ Must be mm-dd-yyyy.")
-            add_entry(title, director, genre, rating, rd, media_type)
-
-        elif action == "Totals & Stats":
+        if action == "Totals & Stats":
             show_totals()
 
-        elif action == "List All":
+        elif action == "List Library":
             list_entries()
 
-        elif action == "List Movies":
-            list_entries("movie")
+        elif action == "View Movie":
+            try:
+                tmdb_id = int(input("  TMDB ID: ").strip())
+                view_entry(tmdb_id)
+            except ValueError:
+                print("  ✗ Enter a numeric TMDB ID.")
 
-        elif action == "List Shows":
-            list_entries("show")
+        elif action == "Delete Movie":
+            try:
+                tmdb_id = int(input("  TMDB ID to delete: ").strip())
+                delete_entry(tmdb_id)
+            except ValueError:
+                print("  ✗ Enter a numeric TMDB ID.")
 
-        elif action == "View Entry":
-            view_entry(get_display_id())
+        elif action == "Search Library":
+            q = input("  Search title: ").strip()
+            if q:
+                list_entries(search=q)
 
-        elif action == "Edit Entry":
-            did = get_display_id()
-            print(f"  Editable: {', '.join(EDITABLE_FIELDS)}")
-            field = clean(input("  Field: "))
-            value = clean(input(f"  New {field}: "))
-            edit_entry(did, field, value)
+        elif action == "Test Match (TMDB Dry Run)":
+            test_match_cli()
 
-        elif action == "Delete Entry":
-            did = get_display_id()
-            confirm = clean(input(f"  Delete {did}? (yes/no): "))
-            if confirm.lower() == "yes":
-                delete_entry(did)
-            else:
-                print("  Cancelled.")
-
-        elif action == "Search":
-            search_entries(prompt("Search (title or director)"))
-
-        elif action == "Export JSON": export_json()
-        elif action == "Import JSON": import_json()
-        elif action == "Export CSV":  export_csv()
-        elif action == "Import CSV":  import_csv()
+        elif action == "Data Import / Export":
+            data_submenu()
 
         elif action == "Configure API Keys":
             setup_api_keys()
@@ -526,7 +768,6 @@ def cli():
             print("  Bye.")
             sys.exit(0)
 
-        # refresh counts after any action that might change DB
         counts = count_all()
 
 

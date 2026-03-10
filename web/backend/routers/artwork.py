@@ -1,7 +1,11 @@
+import logging
 from fastapi import APIRouter, HTTPException
 import database as db
 import fanart
 import tmdb
+from tmdb import TMDBRateLimitError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -31,7 +35,10 @@ def refresh_artwork(movie_id: int):
     try:
         movie_data = tmdb.get_movie(tmdb_id)
         tmdb_artwork = movie_data.get("artwork", [])
+    except TMDBRateLimitError as e:
+        raise HTTPException(status_code=429, detail=str(e), headers={"Retry-After": str(e.retry_after)})
     except Exception as e:
+        logger.warning("TMDB error during artwork refresh for tmdb_id=%s: %s", tmdb_id, e)
         tmdb_artwork = []
 
     fanart_art = fanart.get_movie_art_flat(tmdb_id)

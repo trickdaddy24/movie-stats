@@ -82,7 +82,7 @@ def prompt_key(cfg: dict, existing_value: str | None) -> str:
     label     = cfg["label"]
     required  = cfg["required"]
     hint      = cfg["hint"]
-    default   = existing_value or cfg["default"] or ""
+    default: str = existing_value or cfg.get("default") or ""
     tag       = "[required]" if required else "[optional]"
 
     print(f"\n  {label} {tag}")

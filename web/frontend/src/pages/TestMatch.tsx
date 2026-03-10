@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Search, FlaskConical, CheckCircle, AlertCircle, Info, ChevronRight, Loader2 } from 'lucide-react'
-import api from '../lib/api'
+import { api } from '../lib/api'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Optional
 import httpx
@@ -5,9 +6,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 TMDB_API_KEY = os.getenv("TMDB_API_KEY", "")
 BASE_URL = "https://api.themoviedb.org/3"
 IMAGE_BASE_URL = "https://image.tmdb.org/t/p/"
+
+
+class TMDBRateLimitError(Exception):
+    def __init__(self, retry_after: int = 10):
+        self.retry_after = retry_after
+        super().__init__(f"TMDB rate limit hit — retry after {retry_after}s")
 
 SIZE_POSTER = "w500"
 SIZE_BACKDROP = "w1280"
@@ -28,6 +37,10 @@ def _get(endpoint: str, params: dict = None) -> dict:
     params["api_key"] = TMDB_API_KEY
     with httpx.Client(timeout=15) as client:
         resp = client.get(f"{BASE_URL}{endpoint}", params=params)
+        if resp.status_code == 429:
+            retry_after = int(resp.headers.get("Retry-After", 10))
+            logger.warning("TMDB rate limit hit on %s — retry after %ds", endpoint, retry_after)
+            raise TMDBRateLimitError(retry_after)
         resp.raise_for_status()
         return resp.json()
 
