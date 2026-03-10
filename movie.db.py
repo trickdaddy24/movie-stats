@@ -1,6 +1,6 @@
 """
 movie.db.py — Movie Database CLI
-Version: 1.4.0
+Version: 1.4.3
 
 Shares the same SQLite database as the web app (web/backend/movie_stats.db).
 """
@@ -42,7 +42,7 @@ def bold(t):  return _c(t, "1")
 def blue(t):  return _c(t, "94")
 def yellow(t):return _c(t, "93")
 
-VERSION = "1.4.0"
+VERSION = "1.4.3"
 
 API_KEYS = [
     {"key": "TMDB_API_KEY",    "label": "TMDB API Key",    "required": True,  "hint": "https://www.themoviedb.org/settings/api"},
@@ -429,11 +429,16 @@ def search_and_add_cli():
         print("  No results found.")
         return
 
-    print(f"  {'#':<4} {'TMDB ID':<10} {'Title':<42}  Year")
-    print("  " + "─" * 68)
+    print(f"\n  {'#':<4} {'TMDB ID':<10} {'Year':<6} {'Rating':<6}  Title")
+    print("  " + "─" * 76)
     for i, r in enumerate(raw, 1):
-        year = r.get("release_date", "")[:4] or "—"
-        print(f"  {i:<4} {r.get('id', ''):<10} {r.get('title', '')[:41]:<42}  {year}")
+        year   = r.get("release_date", "")[:4] or "—"
+        rating = f"{r['rating']:.1f}" if r.get("rating") else "—"
+        title  = r.get("title", "")[:48]
+        tmdb_id_disp = r.get("tmdb_id", "")
+        print(f"  {i:<4} {tmdb_id_disp:<10} {year:<6} {rating:<6}  {title}")
+        if r.get("overview"):
+            print(f"       {dim(r['overview'][:90])}")
 
     print()
     pick = input("  Enter # to add to library (or Enter to cancel): ").strip()
@@ -442,7 +447,7 @@ def search_and_add_cli():
         return
 
     selected = raw[int(pick) - 1]
-    tmdb_id = selected.get("id") or selected.get("tmdb_id")
+    tmdb_id = selected.get("tmdb_id")
 
     with get_db() as conn:
         existing = conn.execute(
