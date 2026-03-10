@@ -64,7 +64,7 @@ def _strip_tmdb_list_url(list_id: str) -> str:
 
 def _new_job(source: str) -> str:
     job_id = uuid.uuid4().hex
-    _jobs[job_id] = {"done": False, "source": source}
+    _jobs[job_id] = {"done": False, "source": source, "cancelled": False}
     _job_events[job_id] = []
     return job_id
 
@@ -120,7 +120,12 @@ def _run_import(job_id: str, movies_to_import: list[dict], source: str, source_d
 
     session_id = db.create_import_session(source, source_detail)
 
+    cancelled = False
     for i, movie in enumerate(movies_to_import, 1):
+        if _jobs[job_id].get("cancelled"):
+            cancelled = True
+            break
+
         try:
             tmdb_id = movie.get("tmdb_id")
             title = movie.get("title", f"TMDB {tmdb_id}")
@@ -161,13 +166,16 @@ def _run_import(job_id: str, movies_to_import: list[dict], source: str, source_d
 
     elapsed = round(time.time() - start, 1)
     db.finish_import_session(session_id, imported, skipped, failed, log_entries)
-    _job_events[job_id].append({
+    done_event: dict = {
         "type": "done",
         "imported": imported,
         "skipped": skipped,
         "failed": failed,
         "elapsed_seconds": elapsed,
-    })
+    }
+    if cancelled:
+        done_event["reason"] = "Import cancelled by user"
+    _job_events[job_id].append(done_event)
     _jobs[job_id]["done"] = True
 
 
@@ -190,6 +198,28 @@ def _resolve_folder_movies(parsed_movies: list[dict]) -> list[dict]:
         except Exception:
             pass
     return resolved
+
+
+def _run_plex_import(job_id: str, plex_url: str, plex_token: str, section_key: str) -> None:
+    """Fetch Plex library in the background thread, then run the standard import loop."""
+    try:
+        movies = plex_client.get_library_movies(plex_url, plex_token, section_key)
+    except Exception as e:
+        log.error(f"[plex] Failed to fetch library: {e}")
+        _job_events[job_id].append({"type": "start", "total": 0, "source": "plex"})
+        _job_events[job_id].append({
+            "type": "done", "imported": 0, "skipped": 0, "failed": 0,
+            "elapsed_seconds": 0, "reason": f"Plex error: {e}",
+        })
+        _jobs[job_id]["done"] = True
+        return
+
+    importable = [m for m in movies if m.get("tmdb_id")]
+    unresolved = [m for m in movies if not m.get("tmdb_id")]
+    all_movies: list[dict] = importable + [
+        {"tmdb_id": None, "title": m.get("title", "Unknown")} for m in unresolved
+    ]
+    _run_import(job_id, all_movies, "plex", section_key)
 
 
 def _run_folder_import(job_id: str, parsed: list[dict], folder_path: str) -> None:
@@ -439,8 +469,12 @@ def get_plex_libraries(body: PlexLibrariesBody):
 @router.post("/plex/preview")
 def preview_plex(body: PlexPreviewBody):
     """Preview movies in a Plex library section."""
+    import os
+    plex_token = body.plex_token or os.getenv("PLEX_TOKEN", "").strip()
+    if not plex_token:
+        raise HTTPException(status_code=400, detail="Plex token not configured — add it in Settings")
     try:
-        movies = plex_client.get_library_movies(body.plex_url, body.plex_token, body.section_key)
+        movies = plex_client.get_library_movies(body.plex_url, plex_token, body.section_key)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Plex error: {e}")
 
@@ -457,30 +491,35 @@ def preview_plex(body: PlexPreviewBody):
 
 @router.post("/plex/start")
 def start_plex_import(body: PlexStartBody):
-    """Start a streaming import from a Plex library. Returns job_id."""
+    """Start a streaming import from a Plex library. Returns job_id immediately."""
+    import os
     _require_tmdb_key()
-    try:
-        movies = plex_client.get_library_movies(body.plex_url, body.plex_token, body.section_key)
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Plex error: {e}")
-
-    importable = [m for m in movies if m.get("tmdb_id")]
-    unresolved = [m for m in movies if not m.get("tmdb_id")]
-
-    # Pre-seed unresolved as failed events so the total is accurate
-    all_movies: list[dict] = importable + [
-        {"tmdb_id": None, "title": m.get("title", "Unknown")} for m in unresolved
-    ]
+    plex_token = body.plex_token or os.getenv("PLEX_TOKEN", "").strip()
+    if not plex_token:
+        raise HTTPException(status_code=400, detail="Plex token not configured — add it in Settings")
 
     job_id = _new_job("plex")
     t = threading.Thread(
-        target=_run_import,
-        args=(job_id, all_movies, "plex", body.section_key),
+        target=_run_plex_import,
+        args=(job_id, body.plex_url, plex_token, body.section_key),
         daemon=True,
     )
     t.start()
 
-    return {"job_id": job_id, "total": len(all_movies)}
+    return {"job_id": job_id}
+
+
+# ---------------------------------------------------------------------------
+# Cancel endpoint
+# ---------------------------------------------------------------------------
+
+@router.post("/cancel/{job_id}")
+def cancel_import(job_id: str):
+    """Signal a running import job to stop after the current movie."""
+    if job_id not in _jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    _jobs[job_id]["cancelled"] = True
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------

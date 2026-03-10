@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { ProgressState } from '../hooks/useImportProgress'
-import { CheckCircle, XCircle, MinusCircle, Clock } from 'lucide-react'
+import { CheckCircle, XCircle, MinusCircle, Clock, Square } from 'lucide-react'
 
 function formatETA(seconds: number | null): string {
   if (seconds === null || seconds <= 0) return ''
@@ -18,9 +18,11 @@ function formatElapsed(seconds: number): string {
 export default function ImportProgress({
   progress,
   onReset,
+  onCancel,
 }: {
   progress: ProgressState
   onReset: () => void
+  onCancel?: () => void
 }) {
   const logRef = useRef<HTMLDivElement>(null)
   const pct = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0
@@ -123,6 +125,15 @@ export default function ImportProgress({
         <p className="text-sm text-red-400 bg-red-900/20 border border-red-800 rounded-lg px-3 py-2">
           {progress.failureReason}
         </p>
+      )}
+
+      {progress.running && onCancel && (
+        <button
+          onClick={onCancel}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-red-700 hover:bg-red-600 text-white text-xs font-medium rounded-lg transition-colors w-fit"
+        >
+          <Square size={11} /> Stop Import
+        </button>
       )}
 
       {progress.done && (

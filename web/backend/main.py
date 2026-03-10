@@ -11,7 +11,7 @@ from routers.imports import router as imports_router
 from routers.settings import router as settings_router
 from routers.test_match import router as test_router
 
-app = FastAPI(title="Movie Stats API", version="1.4.0")
+app = FastAPI(title="Movie Stats API", version="1.4.2")
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import type { ImportProgressEvent } from '../lib/api'
+import { cancelImport } from '../lib/api'
 
 export interface ProgressState {
   running: boolean
@@ -37,14 +38,26 @@ export function useImportProgress() {
   const [progress, setProgress] = useState<ProgressState>(INITIAL)
   const esRef = useRef<EventSource | null>(null)
   const startTimeRef = useRef<number>(0)
+  const jobIdRef = useRef<string>('')
 
   const reset = useCallback(() => {
     esRef.current?.close()
+    jobIdRef.current = ''
     setProgress(INITIAL)
+  }, [])
+
+  const cancel = useCallback(async () => {
+    esRef.current?.close()
+    const jobId = jobIdRef.current
+    if (jobId) {
+      try { await cancelImport(jobId) } catch {}
+    }
+    setProgress((p) => ({ ...p, running: false, done: true, failureReason: 'Import cancelled by user' }))
   }, [])
 
   const connect = useCallback((jobId: string) => {
     esRef.current?.close()
+    jobIdRef.current = jobId
     startTimeRef.current = Date.now()
     setProgress((p) => ({ ...p, running: true, done: false }))
 
@@ -111,5 +124,5 @@ export function useImportProgress() {
     }
   }, [])
 
-  return { progress, connect, reset }
+  return { progress, connect, reset, cancel }
 }

@@ -65,7 +65,7 @@ function PreviewList({
 // Tab: TMDB List
 // ---------------------------------------------------------------------------
 
-function TMDBListTab({ progress, connect, reset }: ReturnType<typeof useImportProgress>) {
+function TMDBListTab({ progress, connect, reset, cancel }: ReturnType<typeof useImportProgress>) {
   const [listId, setListId] = useState('')
   const [preview, setPreview] = useState<TMDBListPreview | null>(null)
   const [loading, setLoading] = useState(false)
@@ -104,7 +104,7 @@ function TMDBListTab({ progress, connect, reset }: ReturnType<typeof useImportPr
   }
 
   if (progress.running || progress.done) {
-    return <ImportProgress progress={progress} onReset={reset} />
+    return <ImportProgress progress={progress} onReset={reset} onCancel={cancel} />
   }
 
   return (
@@ -165,7 +165,7 @@ function TMDBListTab({ progress, connect, reset }: ReturnType<typeof useImportPr
 // Tab: Trakt
 // ---------------------------------------------------------------------------
 
-function TraktTab({ progress, connect, reset }: ReturnType<typeof useImportProgress>) {
+function TraktTab({ progress, connect, reset, cancel }: ReturnType<typeof useImportProgress>) {
   const [username, setUsername] = useState('')
   const [listSlug, setListSlug] = useState('')
   const [preview, setPreview] = useState<TraktPreview | null>(null)
@@ -205,7 +205,7 @@ function TraktTab({ progress, connect, reset }: ReturnType<typeof useImportProgr
   }
 
   if (progress.running || progress.done) {
-    return <ImportProgress progress={progress} onReset={reset} />
+    return <ImportProgress progress={progress} onReset={reset} onCancel={cancel} />
   }
 
   return (
@@ -282,7 +282,7 @@ function TraktTab({ progress, connect, reset }: ReturnType<typeof useImportProgr
 // Tab: Plex
 // ---------------------------------------------------------------------------
 
-function PlexTab({ progress, connect, reset }: ReturnType<typeof useImportProgress>) {
+function PlexTab({ progress, connect, reset, cancel }: ReturnType<typeof useImportProgress>) {
   // Auto-load saved credentials from .env via backend
   const { data: saved, isLoading: savedLoading } = useQuery({
     queryKey: ['plex-saved'],
@@ -354,7 +354,7 @@ function PlexTab({ progress, connect, reset }: ReturnType<typeof useImportProgre
   }
 
   if (progress.running || progress.done) {
-    return <ImportProgress progress={progress} onReset={reset} />
+    return <ImportProgress progress={progress} onReset={reset} onCancel={cancel} />
   }
 
   return (
@@ -501,7 +501,7 @@ function PlexTab({ progress, connect, reset }: ReturnType<typeof useImportProgre
 // Tab: Folder
 // ---------------------------------------------------------------------------
 
-function FolderTab({ progress, connect, reset }: ReturnType<typeof useImportProgress>) {
+function FolderTab({ progress, connect, reset, cancel }: ReturnType<typeof useImportProgress>) {
   const [folderPath, setFolderPath] = useState('')
   const [recursive, setRecursive] = useState(true)
   const [preview, setPreview] = useState<{
@@ -544,7 +544,7 @@ function FolderTab({ progress, connect, reset }: ReturnType<typeof useImportProg
   }
 
   if (progress.running || progress.done) {
-    return <ImportProgress progress={progress} onReset={reset} />
+    return <ImportProgress progress={progress} onReset={reset} onCancel={cancel} />
   }
 
   return (

@@ -235,6 +235,9 @@ export const previewFolder = (folder_path: string, recursive = true) =>
 export const getImportSessions = () =>
   api.get<ImportSession[]>('/import/sessions').then((r) => r.data)
 
+export const cancelImport = (jobId: string) =>
+  api.post(`/import/cancel/${jobId}`).then((r) => r.data)
+
 // ---------------------------------------------------------------------------
 // Settings — API key status
 // ---------------------------------------------------------------------------

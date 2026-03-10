@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.2] - 2026-03-09
+
+### Added
+- Red **Stop Import** button in all import progress views — cancels the job after the current movie finishes
+- `POST /api/import/cancel/{job_id}` backend endpoint — sets a `cancelled` flag checked each iteration of the import loop
+- `cancelImport` API function in `api.ts`
+- `cancel` callback in `useImportProgress` hook — posts cancel, closes SSE connection, marks import done with reason
+
+### Fixed
+- Plex "Import All" did not import anything when using saved credentials — frontend sent an empty token string; backend now falls back to `PLEX_TOKEN` env var before starting the job
+- Plex library fetch now runs in `_run_plex_import` background thread so the HTTP response returns immediately (same pattern as folder import), preventing timeout on large libraries
+
 ## [1.4.1] - 2026-03-09
 
 ### Fixed
