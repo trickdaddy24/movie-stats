@@ -179,25 +179,45 @@ def _run_import(job_id: str, movies_to_import: list[dict], source: str, source_d
     _jobs[job_id]["done"] = True
 
 
-def _resolve_folder_movies(parsed_movies: list[dict]) -> list[dict]:
-    """Resolve parsed filenames to TMDB IDs via search."""
+def _resolve_folder_movies(parsed_movies: list[dict]) -> tuple[list[dict], list[dict]]:
+    """
+    Resolve parsed filenames to TMDB IDs via search.
+    Returns (resolved, unresolved).
+    Rate-limit errors trigger a sleep + one retry. A 0.25s delay between
+    every request keeps us well under TMDB's rate limit.
+    """
     resolved = []
+    unresolved = []
     for m in parsed_movies:
-        try:
-            results = tmdb.search_movies(m["title"], page=1)
-            items = results.get("results", [])
-            if m.get("year"):
-                match = next(
-                    (r for r in items if str(r.get("release_date", ""))[:4] == str(m["year"])),
-                    None,
-                )
-            else:
-                match = items[0] if items else None
-            if match:
-                resolved.append({"tmdb_id": match["id"], "title": match["title"]})
-        except Exception:
-            pass
-    return resolved
+        matched = False
+        for attempt in range(2):
+            try:
+                results = tmdb.search_movies(m["title"], page=1)
+                items = results.get("results", [])
+                if m.get("year"):
+                    # Prefer exact year match, fall back to top result
+                    hit = next(
+                        (r for r in items if str(r.get("release_date", ""))[:4] == str(m["year"])),
+                        items[0] if items else None,
+                    )
+                else:
+                    hit = items[0] if items else None
+                if hit:
+                    resolved.append({"tmdb_id": hit["id"], "title": hit["title"]})
+                    matched = True
+                else:
+                    log.warning(f"[folder] No TMDB result for '{m['title']}' ({m.get('year', '?')})")
+                break
+            except TMDBRateLimitError as e:
+                log.warning(f"[folder] Rate limited searching '{m['title']}', sleeping {e.retry_after}s")
+                time.sleep(e.retry_after)
+            except Exception as e:
+                log.warning(f"[folder] Search error for '{m['title']}': {e}")
+                break
+        if not matched:
+            unresolved.append(m)
+        time.sleep(0.25)
+    return resolved, unresolved
 
 
 def _run_plex_import(job_id: str, plex_url: str, plex_token: str, section_key: str) -> None:
@@ -224,8 +244,11 @@ def _run_plex_import(job_id: str, plex_url: str, plex_token: str, section_key: s
 
 def _run_folder_import(job_id: str, parsed: list[dict], folder_path: str) -> None:
     """Resolve filenames to TMDB IDs in the background, then run the standard import loop."""
-    resolved = _resolve_folder_movies(parsed)
+    resolved, unresolved = _resolve_folder_movies(parsed)
+
     if not resolved:
+        sample = ", ".join(f'"{m["title"]}"' for m in parsed[:4])
+        extra = f" ...+{len(parsed) - 4} more" if len(parsed) > 4 else ""
         log.warning(f"[folder] No TMDB matches for {len(parsed)} files in {folder_path}")
         _job_events[job_id].append({"type": "start", "total": len(parsed), "source": "folder"})
         _job_events[job_id].append({
@@ -234,11 +257,21 @@ def _run_folder_import(job_id: str, parsed: list[dict], folder_path: str) -> Non
             "skipped": 0,
             "failed": len(parsed),
             "elapsed_seconds": 0,
-            "reason": "No TMDB matches found — check your TMDB API key in Settings or verify the filenames can be parsed",
+            "reason": (
+                f"No TMDB matches for {len(parsed)} file(s). "
+                f"Parsed as: {sample}{extra}. "
+                f"Check your TMDB API key in Settings or rename files to include the movie title."
+            ),
         })
         _jobs[job_id]["done"] = True
         return
-    _run_import(job_id, resolved, "folder", folder_path)
+
+    # Unresolved files become per-item failures in the progress log
+    all_movies = resolved + [
+        {"tmdb_id": None, "title": f"{m['title']} ({m['year']})" if m.get("year") else m["title"]}
+        for m in unresolved
+    ]
+    _run_import(job_id, all_movies, "folder", folder_path)
 
 
 # ---------------------------------------------------------------------------
