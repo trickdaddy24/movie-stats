@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.4] - 2026-03-09
+
+### Fixed
+- Folder import "Refresh Posters" now re-fetches artwork for all movies, not just ones missing a poster row
+- `_resolve_folder_movies` now tracks the last API exception and surfaces it in the done event — previously a 401 or network error was silently swallowed and showed as "no matches"
+- `scanner.py` — separators (`._-`) normalized to spaces before year extraction so `Movie_2008` and `Movie.2008` correctly detect the year; year regex also handles `(2008)` and `[2008]` bracket wrapping; dangling `(` and `[` stripped after year cut (e.g. `Disaster Movie (2008).mkv` no longer produces title `"Disaster Movie ("`)
+- `movie.db.py` Search & Add (option 6) — results table was showing blank TMDB ID because `r.get('id')` was used instead of `r.get('tmdb_id')`; also now shows rating and a short overview line per result to match UI search
+
 ## [1.4.3] - 2026-03-09
 
 ### Added
