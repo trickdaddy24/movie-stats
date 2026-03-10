@@ -116,7 +116,7 @@ export function refreshArtwork(id: number): Promise<{ success: boolean; artwork:
   return api.get(`/movies/${id}/artwork/refresh`).then((r) => r.data)
 }
 
-export function refreshAllArtwork(): Promise<{ started: boolean; movies_missing_poster: number }> {
+export function refreshAllArtwork(): Promise<{ started: boolean; total: number }> {
   return api.post('/movies/refresh-all-artwork').then((r) => r.data)
 }
 

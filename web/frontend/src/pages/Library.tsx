@@ -27,10 +27,9 @@ export default function Library() {
     try {
       const result = await refreshAllArtwork()
       if (!result.started) {
-        setRefreshMsg('All movies already have poster art.')
+        setRefreshMsg('No movies in library.')
       } else {
-        setRefreshMsg(`Fetching posters for ${result.movies_missing_poster} movies in the background…`)
-        // Refresh library after a delay to pick up newly stored posters
+        setRefreshMsg(`Re-fetching artwork for ${result.total} movie${result.total !== 1 ? 's' : ''} in the background…`)
         setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: ['movies'] })
           setRefreshMsg(null)

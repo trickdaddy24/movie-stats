@@ -29,19 +29,11 @@ def get_artwork(movie_id: int):
 def refresh_all_artwork():
     """
     Start a background task that re-fetches TMDB + fanart.tv artwork for every
-    movie that currently has no poster stored. Returns immediately.
+    movie in the library. Returns immediately.
     """
     with db.get_db() as conn:
-        rows = conn.execute(
-            """
-            SELECT m.id, m.tmdb_id FROM movies m
-            WHERE NOT EXISTS (
-                SELECT 1 FROM artwork a
-                WHERE a.movie_id = m.id AND a.type = 'poster'
-            )
-            """
-        ).fetchall()
-        movies_missing = [dict(r) for r in rows]
+        rows = conn.execute("SELECT id, tmdb_id FROM movies").fetchall()
+        all_movies = [dict(r) for r in rows]
 
     def _run(movies: list[dict]) -> None:
         for movie in movies:
@@ -53,10 +45,10 @@ def refresh_all_artwork():
             except Exception as e:
                 logger.warning("Artwork refresh failed for movie_id=%s: %s", movie["id"], e)
 
-    if movies_missing:
-        threading.Thread(target=_run, args=(movies_missing,), daemon=True).start()
+    if all_movies:
+        threading.Thread(target=_run, args=(all_movies,), daemon=True).start()
 
-    return {"started": len(movies_missing) > 0, "movies_missing_poster": len(movies_missing)}
+    return {"started": len(all_movies) > 0, "total": len(all_movies)}
 
 
 @router.get("/movies/{movie_id}/artwork/refresh")
