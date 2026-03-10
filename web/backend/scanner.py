@@ -15,14 +15,20 @@ STRIP_TAGS = re.compile(
 def parse_filename(filename: str) -> dict:
     """Extract title and year from a movie filename."""
     name = Path(filename).stem
-    # Extract year (1900-2099)
-    year_match = re.search(r'\b(19\d{2}|20\d{2})\b', name)
+
+    # Normalize separators first so year detection works for Movie_2008, Movie.2008 etc.
+    name = re.sub(r'[._\-]+', ' ', name)
+    name = re.sub(r'\s+', ' ', name).strip()
+
+    # Extract year (1900-2099), including when wrapped in brackets like (2008) or [2008]
+    year_match = re.search(r'[\[\(]?\s*(19\d{2}|20\d{2})\s*[\]\)]?', name)
     year = int(year_match.group(1)) if year_match else None
     if year_match:
-        name = name[:year_match.start()]
+        # Cut everything from the year token onward; strip any dangling open bracket
+        name = name[:year_match.start()].rstrip('([')
+
     name = STRIP_TAGS.sub('', name)
-    name = re.sub(r'[\[\(].*?[\]\)]', '', name)   # remove [bracketed] and (parenthesized) content
-    name = re.sub(r'[._\-]+', ' ', name)
+    name = re.sub(r'[\[\(].*?[\]\)]', '', name)   # remove remaining [bracketed] content
     name = re.sub(r'\s+', ' ', name).strip()
     return {'title': name, 'year': year, 'filename': filename}
 

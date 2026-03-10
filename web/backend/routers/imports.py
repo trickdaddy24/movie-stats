@@ -179,15 +179,16 @@ def _run_import(job_id: str, movies_to_import: list[dict], source: str, source_d
     _jobs[job_id]["done"] = True
 
 
-def _resolve_folder_movies(parsed_movies: list[dict]) -> tuple[list[dict], list[dict]]:
+def _resolve_folder_movies(parsed_movies: list[dict]) -> tuple[list[dict], list[dict], str | None]:
     """
     Resolve parsed filenames to TMDB IDs via search.
-    Returns (resolved, unresolved).
-    Rate-limit errors trigger a sleep + one retry. A 0.25s delay between
-    every request keeps us well under TMDB's rate limit.
+    Returns (resolved, unresolved, last_api_error).
+    last_api_error is set to the exception message if any search raised an error,
+    so callers can surface the real reason when nothing resolved.
     """
     resolved = []
     unresolved = []
+    last_api_error: str | None = None
     for m in parsed_movies:
         matched = False
         for attempt in range(2):
@@ -212,12 +213,13 @@ def _resolve_folder_movies(parsed_movies: list[dict]) -> tuple[list[dict], list[
                 log.warning(f"[folder] Rate limited searching '{m['title']}', sleeping {e.retry_after}s")
                 time.sleep(e.retry_after)
             except Exception as e:
+                last_api_error = str(e)
                 log.warning(f"[folder] Search error for '{m['title']}': {e}")
                 break
         if not matched:
             unresolved.append(m)
         time.sleep(0.25)
-    return resolved, unresolved
+    return resolved, unresolved, last_api_error
 
 
 def _run_plex_import(job_id: str, plex_url: str, plex_token: str, section_key: str) -> None:
@@ -244,12 +246,20 @@ def _run_plex_import(job_id: str, plex_url: str, plex_token: str, section_key: s
 
 def _run_folder_import(job_id: str, parsed: list[dict], folder_path: str) -> None:
     """Resolve filenames to TMDB IDs in the background, then run the standard import loop."""
-    resolved, unresolved = _resolve_folder_movies(parsed)
+    resolved, unresolved, api_error = _resolve_folder_movies(parsed)
 
     if not resolved:
         sample = ", ".join(f'"{m["title"]}"' for m in parsed[:4])
         extra = f" ...+{len(parsed) - 4} more" if len(parsed) > 4 else ""
         log.warning(f"[folder] No TMDB matches for {len(parsed)} files in {folder_path}")
+        if api_error:
+            reason = f"TMDB search failed: {api_error}. Check your API key in Settings."
+        else:
+            reason = (
+                f"No TMDB results for {len(parsed)} file(s). "
+                f"Parsed as: {sample}{extra}. "
+                f"Check your TMDB API key in Settings or rename files to include the movie title."
+            )
         _job_events[job_id].append({"type": "start", "total": len(parsed), "source": "folder"})
         _job_events[job_id].append({
             "type": "done",
@@ -257,11 +267,7 @@ def _run_folder_import(job_id: str, parsed: list[dict], folder_path: str) -> Non
             "skipped": 0,
             "failed": len(parsed),
             "elapsed_seconds": 0,
-            "reason": (
-                f"No TMDB matches for {len(parsed)} file(s). "
-                f"Parsed as: {sample}{extra}. "
-                f"Check your TMDB API key in Settings or rename files to include the movie title."
-            ),
+            "reason": reason,
         })
         _jobs[job_id]["done"] = True
         return
