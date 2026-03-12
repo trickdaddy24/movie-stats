@@ -9,12 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.40.0",
+    "axios": "^1.7.0",
+    "lucide-react": "^0.395.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "react-router-dom": "^6.23.0",
-    "@tanstack/react-query": "^5.40.0",
-    "axios": "^1.7.0",
-    "lucide-react": "^0.395.0"
+    "recharts": "^3.8.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.0",

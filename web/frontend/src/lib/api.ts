@@ -266,3 +266,27 @@ export const getKeyStatus = () =>
 
 export const updateKeys = (body: { updates: Record<string, string> }) =>
   api.patch<KeyStatus[]>('/settings/keys', body).then((r) => r.data)
+
+// ---------------------------------------------------------------------------
+// Stats — Library analytics
+// ---------------------------------------------------------------------------
+
+export interface StatsData {
+  overview: {
+    total_movies: number
+    total_hours: number
+    avg_rating: number | null
+    avg_runtime: number | null
+    plex_count: number
+    manual_count: number
+  }
+  genres: { name: string; count: number }[]
+  decades: { decade: string; count: number }[]
+  rating_distribution: { bucket: string; count: number }[]
+  content_ratings: { rating: string; count: number }[]
+  added_over_time: { month: string; count: number }[]
+  top_rated: { title: string; rating: number; release_date: string; runtime: number }[]
+}
+
+export const getStats = () =>
+  api.get<StatsData>('/stats').then((r) => r.data)

@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.0] - 2026-03-12
+
+### Added
+- **Library Stats Dashboard** — new `/stats` route with personal analytics: at-a-glance overview cards, genre distribution chart, rating distribution, movies by decade, content ratings breakdown, added-over-time trend line, and top 5 highest-rated movies
+- **Stats Page Navigation** — added "Stats" tab to sidebar between Library and Add Movie with BarChart2 icon
+- **recharts Integration** — responsive charts for data visualization: horizontal bar (genres), vertical bars (ratings, decades, content ratings), and area chart (trends)
+- **Aggregated SQL Queries** — efficient backend queries for all stats computed in a single `/api/stats` endpoint: overview, genres (top 15), decades, rating distribution, content ratings, monthly additions, and top-rated (100+ votes)
+
 ## [1.4.10] - 2026-03-12
 
 ### Added

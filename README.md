@@ -1,6 +1,6 @@
 # MovieStats
 
-![Version](https://img.shields.io/badge/version-1.4.10-6366f1?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.5.0-6366f1?style=flat-square)
 ![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)
@@ -32,6 +32,7 @@
 - **Full Metadata** — title, tagline, overview, runtime, release date, rating, vote count
 - **Cast & Crew** — top-billed cast with photos, directors and writers
 - **Genre Filtering** — browse your library filtered by genre
+- **Library Stats** — at-a-glance personal analytics dashboard with aggregated insights (genres, decades, ratings, trends)
 - **Artwork Gallery** — tabbed gallery (Posters / Backdrops / Logos) with lightbox
 - **Extensible IDs** — store any external ID (TMDB, IMDb, Trakt, Letterboxd, etc.)
 - **Bulk Import** — import from TMDB Lists, Trakt watchlists/user lists, Plex Media Server, or local folders
@@ -252,6 +253,16 @@ FANART_API_KEY=your_fanart_key_here
 - **Sort** — 10 options: Newest/Oldest Added, Title A–Z/Z–A, Rating ↓/↑, Year ↓/↑, Runtime ↓/↑
 - **Genre pills** — click to toggle; select multiple genres at once (e.g., "Action" + "Thriller"); click "Clear" to reset
 - Click any card to open the full detail page
+
+### Library Stats
+
+- **Overview cards** — total movies, watch time, average rating, average runtime, and Plex source count
+- **Top Genres chart** — horizontal bar chart of your most-watched genres (top 15)
+- **Rating Distribution** — see how many movies fall into each rating bucket (N/A, 1–4, 4–5, etc.)
+- **Movies by Decade** — bar chart breaking down your collection by release decade
+- **Content Ratings** — distribution of MPAA/BBFC ratings (R, PG-13, PG, etc.)
+- **Added Over Time** — area chart of movies added to your library over the past 24 months
+- **Top Rated** — list of your 5 highest-rated movies (with 100+ TMDB votes)
 
 ### Movie Detail Page
 

@@ -9,9 +9,10 @@ import database as db_module
 from routers import search, movies, artwork
 from routers.imports import router as imports_router
 from routers.settings import router as settings_router
+from routers.stats import router as stats_router
 from routers.test_match import router as test_router
 
-app = FastAPI(title="Movie Stats API", version="1.4.10")
+app = FastAPI(title="Movie Stats API", version="1.5.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,6 +27,7 @@ app.include_router(movies.router, prefix="/api")
 app.include_router(artwork.router, prefix="/api")
 app.include_router(imports_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
+app.include_router(stats_router, prefix="/api")
 app.include_router(test_router, prefix="/api")
 
 
@@ -45,7 +47,7 @@ def startup():
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "version": "1.4.8"}
+    return {"status": "ok", "version": "1.5.0"}
 
 
 if __name__ == "__main__":

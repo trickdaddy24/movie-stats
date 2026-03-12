@@ -7,6 +7,7 @@ import Search from './pages/Search'
 import MovieDetail from './pages/MovieDetail'
 import Import from './pages/Import'
 import Settings from './pages/Settings'
+import Stats from './pages/Stats'
 import TestMatch from './pages/TestMatch'
 
 const queryClient = new QueryClient({
@@ -30,6 +31,7 @@ export default function App() {
               <Route path="/search" element={<Search />} />
               <Route path="/movies/:id" element={<MovieDetail />} />
               <Route path="/import" element={<Import />} />
+              <Route path="/stats" element={<Stats />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/test" element={<TestMatch />} />
             </Route>
