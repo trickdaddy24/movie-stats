@@ -15,13 +15,14 @@ export default function Settings() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings-keys'] }),
   })
 
-  if (isLoading) return <div className="p-6 text-slate-400">Loading…</div>
+  if (isLoading) return <div className="p-6 text-slate-500 dark:text-slate-500 dark:text-slate-400">Loading…</div>
 
   return (
     <div className="p-6 max-w-2xl space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-white">Settings</h1>
-        <p className="text-sm text-slate-400 mt-1">Configure API keys for TMDB, fanart.tv, Trakt, and Plex.</p>
+        <h1 className="text-xl font-bold text-white
+">Settings</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-1">Configure API keys for TMDB, fanart.tv, Trakt, and Plex.</p>
       </div>
 
       <div className="space-y-3">
@@ -70,7 +71,7 @@ function KeyCard({
   }
 
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-900 p-4">
+    <div className="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
       <div className="flex items-start justify-between gap-4">
         {/* Status + label */}
         <div className="flex items-center gap-3 min-w-0">
@@ -87,7 +88,7 @@ function KeyCard({
               )}
             </div>
             {keyInfo.configured ? (
-              <span className="text-xs text-slate-500 font-mono">{keyInfo.masked}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-500 font-mono">{keyInfo.masked}</span>
             ) : (
               <a
                 href={keyInfo.hint}
@@ -122,13 +123,13 @@ function KeyCard({
               onKeyDown={e => e.key === 'Enter' && handleSave()}
               placeholder={`Enter ${keyInfo.label}`}
               autoFocus
-              className="w-full rounded-lg bg-slate-800 border border-slate-600 px-3 py-1.5 text-sm text-slate-100
+              className="w-full rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-600 px-3 py-1.5 text-sm text-slate-100
                          placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-9"
             />
             <button
               type="button"
               onClick={() => setShowVal(v => !v)}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
             >
               {showVal ? <EyeOff size={14} /> : <Eye size={14} />}
             </button>
@@ -143,7 +144,7 @@ function KeyCard({
           </button>
           <button
             onClick={() => { setEditing(false); setValue('') }}
-            className="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm text-slate-300"
+            className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-sm text-slate-700 dark:text-slate-300"
           >
             Cancel
           </button>
@@ -152,15 +153,15 @@ function KeyCard({
         <div className="mt-3 flex gap-2">
           <button
             onClick={() => setEditing(true)}
-            className="text-xs px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300"
+            className="text-xs px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300"
           >
             {keyInfo.configured ? 'Update key' : 'Add key'}
           </button>
           {keyInfo.configured && (
             <button
               onClick={handleClear}
-              className="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-red-900/40
-                         text-slate-400 hover:text-red-400"
+              className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-red-900/40
+                         text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-red-400"
             >
               Clear
             </button>

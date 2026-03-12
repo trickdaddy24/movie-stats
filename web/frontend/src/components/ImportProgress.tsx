@@ -35,10 +35,10 @@ export default function ImportProgress({
   if (!progress.running && !progress.done) return null
 
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-900 p-4 space-y-4">
+    <div className="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 space-y-4">
       {/* Progress bar */}
       <div className="space-y-1">
-        <div className="flex justify-between text-xs text-slate-400">
+        <div className="flex justify-between text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400">
           <span>
             {progress.current} / {progress.total} movies
           </span>
@@ -49,7 +49,7 @@ export default function ImportProgress({
               : formatETA(progress.etaSeconds)}
           </span>
         </div>
-        <div className="h-2 rounded-full bg-slate-700 overflow-hidden">
+        <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-300 ${
               progress.done ? 'bg-green-500' : 'bg-indigo-500'
@@ -57,7 +57,7 @@ export default function ImportProgress({
             style={{ width: `${pct}%` }}
           />
         </div>
-        <div className="text-xs text-slate-400 truncate">
+        <div className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 truncate">
           {progress.running && progress.currentTitle && (
             <span>
               <span
@@ -65,7 +65,7 @@ export default function ImportProgress({
                   progress.currentStatus === 'imported'
                     ? 'text-green-400'
                     : progress.currentStatus === 'skipped'
-                    ? 'text-slate-400'
+                    ? 'text-slate-500 dark:text-slate-500 dark:text-slate-400'
                     : 'text-red-400'
                 }
               >
@@ -83,7 +83,7 @@ export default function ImportProgress({
           <span className="flex items-center gap-1 text-green-400">
             <CheckCircle size={14} /> {progress.imported} imported
           </span>
-          <span className="flex items-center gap-1 text-slate-400">
+          <span className="flex items-center gap-1 text-slate-500 dark:text-slate-500 dark:text-slate-400">
             <MinusCircle size={14} /> {progress.skipped} skipped
           </span>
           {progress.failed > 0 && (
@@ -107,14 +107,14 @@ export default function ImportProgress({
                 entry.status === 'imported'
                   ? 'text-green-400'
                   : entry.status === 'skipped'
-                  ? 'text-slate-500'
+                  ? 'text-slate-500 dark:text-slate-500'
                   : 'text-red-400'
               }
             >
               {entry.status === 'imported' ? '+ ' : entry.status === 'skipped' ? '− ' : '✗ '}
               {entry.title}
               {entry.reason && (
-                <span className="text-slate-600 ml-1">— {entry.reason}</span>
+                <span className="text-slate-400 dark:text-slate-600 ml-1">— {entry.reason}</span>
               )}
             </div>
           ))}

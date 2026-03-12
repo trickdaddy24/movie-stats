@@ -18,10 +18,10 @@ export default function MovieCard({ movie }: Props) {
   return (
     <div
       onClick={() => navigate(`/movies/${movie.id}`)}
-      className="group cursor-pointer bg-slate-900 rounded-xl overflow-hidden border border-slate-800 hover:border-brand-500 transition-all duration-200 hover:shadow-lg hover:shadow-brand-500/10 hover:-translate-y-0.5"
+      className="group cursor-pointer bg-slate-50 dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 hover:border-brand-500 transition-all duration-200 hover:shadow-lg hover:shadow-brand-500/10 hover:-translate-y-0.5"
     >
       {/* Poster */}
-      <div className="relative aspect-[2/3] bg-slate-800 overflow-hidden">
+      <div className="relative aspect-[2/3] bg-slate-100 dark:bg-slate-800 overflow-hidden">
         {poster ? (
           <img
             src={poster}
@@ -33,7 +33,7 @@ export default function MovieCard({ movie }: Props) {
             }}
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-600">
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-400 dark:text-slate-600">
             <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
             </svg>
@@ -69,7 +69,7 @@ export default function MovieCard({ movie }: Props) {
         <h3 className="font-semibold text-sm text-slate-100 line-clamp-2 leading-snug">
           {movie.title}
         </h3>
-        <p className="text-xs text-slate-500 mt-1">{formatYear(movie.release_date)}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">{formatYear(movie.release_date)}</p>
 
         {/* Genres */}
         {movie.genres && movie.genres.length > 0 && (
@@ -77,13 +77,13 @@ export default function MovieCard({ movie }: Props) {
             {movie.genres.slice(0, 2).map((g) => (
               <span
                 key={g}
-                className="text-[10px] px-1.5 py-0.5 bg-slate-800 text-slate-400 rounded-md border border-slate-700"
+                className="text-[10px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-500 dark:text-slate-400 rounded-md border border-slate-300 dark:border-slate-700"
               >
                 {g}
               </span>
             ))}
             {movie.genres.length > 2 && (
-              <span className="text-[10px] px-1.5 py-0.5 text-slate-600">
+              <span className="text-[10px] px-1.5 py-0.5 text-slate-400 dark:text-slate-600">
                 +{movie.genres.length - 2}
               </span>
             )}

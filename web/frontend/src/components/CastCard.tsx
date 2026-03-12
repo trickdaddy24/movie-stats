@@ -35,7 +35,7 @@ export default function CastCard({ person }: Props) {
   return (
     <div className="flex-shrink-0 w-28 text-center">
       {/* Avatar */}
-      <div className="mx-auto w-20 h-20 rounded-full overflow-hidden border-2 border-slate-700 mb-2">
+      <div className="mx-auto w-20 h-20 rounded-full overflow-hidden border-2 border-slate-300 dark:border-slate-700 mb-2">
         {hasPhoto ? (
           <img
             src={person.profile_path}
@@ -65,7 +65,7 @@ export default function CastCard({ person }: Props) {
         {person.name}
       </p>
       {label && (
-        <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-2">{label}</p>
+        <p className="text-[10px] text-slate-500 dark:text-slate-500 mt-0.5 line-clamp-2">{label}</p>
       )}
     </div>
   )

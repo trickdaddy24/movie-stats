@@ -36,27 +36,27 @@ function PreviewList({
   description?: string
 }) {
   return (
-    <div className="mt-3 bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-2">
-      {listName && <p className="text-sm font-semibold text-white">{listName}</p>}
-      {description && <p className="text-xs text-slate-400">{description}</p>}
-      <p className="text-xs text-slate-500">
+    <div className="mt-3 bg-slate-100 dark:bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-300 dark:border-slate-700 rounded-xl p-4 space-y-2">
+      {listName && <p className="text-sm font-semibold text-slate-900 dark:text-white">{listName}</p>}
+      {description && <p className="text-xs text-slate-400 dark:text-slate-600 dark:text-slate-500 dark:text-slate-400">{description}</p>}
+      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-500">
         {total} movie{total !== 1 ? 's' : ''} found
       </p>
       {movies.length > 0 && (
         <ul className="space-y-1">
           {movies.slice(0, 5).map((m, i) => (
-            <li key={i} className="text-xs text-slate-300 flex gap-2">
-              <span className="text-slate-600">{i + 1}.</span>
+            <li key={i} className="text-xs text-slate-700 dark:text-slate-700 dark:text-slate-300 flex gap-2">
+              <span className="text-slate-500 dark:text-slate-500 dark:text-slate-400 dark:text-slate-600">{i + 1}.</span>
               {m.title}
-              {m.year && <span className="text-slate-500">({m.year})</span>}
+              {m.year && <span className="text-slate-500 dark:text-slate-500 dark:text-slate-500">({m.year})</span>}
               {m.filename && (
-                <span className="text-slate-600 truncate max-w-xs">{m.filename}</span>
+                <span className="text-slate-500 dark:text-slate-500 dark:text-slate-400 dark:text-slate-600 truncate max-w-xs">{m.filename}</span>
               )}
             </li>
           ))}
         </ul>
       )}
-      {total > 5 && <p className="text-xs text-slate-600 italic">…and {total - 5} more</p>}
+      {total > 5 && <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 dark:text-slate-600 italic">…and {total - 5} more</p>}
     </div>
   )
 }
@@ -110,7 +110,7 @@ function TMDBListTab({ progress, connect, reset, cancel }: ReturnType<typeof use
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-1.5">
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-700 dark:text-slate-300 mb-1.5">
           TMDB List ID or URL
         </label>
         <input
@@ -121,7 +121,7 @@ function TMDBListTab({ progress, connect, reset, cancel }: ReturnType<typeof use
             setPreview(null)
           }}
           placeholder="12345 or https://www.themoviedb.org/list/12345"
-          className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-colors"
+          className="w-full px-3 py-2.5 bg-white dark:bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-colors"
         />
       </div>
 
@@ -129,7 +129,7 @@ function TMDBListTab({ progress, connect, reset, cancel }: ReturnType<typeof use
         <button
           onClick={handlePreview}
           disabled={!listId.trim() || loading}
-          className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-slate-200 dark:bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 text-slate-900 dark:text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
           Preview
@@ -219,7 +219,7 @@ function TraktTab({ progress, connect, reset, cancel }: ReturnType<typeof useImp
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-1.5">Trakt Username</label>
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Trakt Username</label>
         <input
           type="text"
           value={username}
@@ -228,13 +228,13 @@ function TraktTab({ progress, connect, reset, cancel }: ReturnType<typeof useImp
             setPreview(null)
           }}
           placeholder="your_trakt_username"
-          className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-colors"
+          className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-colors"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-1.5">
-          List Slug <span className="text-slate-500 font-normal">(optional)</span>
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+          List Slug <span className="text-slate-500 dark:text-slate-500 font-normal">(optional)</span>
         </label>
         <input
           type="text"
@@ -244,16 +244,16 @@ function TraktTab({ progress, connect, reset, cancel }: ReturnType<typeof useImp
             setPreview(null)
           }}
           placeholder="my-list-name"
-          className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-colors"
+          className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-colors"
         />
-        <p className="text-xs text-slate-500 mt-1">Leave blank to import your watchlist</p>
+        <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">Leave blank to import your watchlist</p>
       </div>
 
       <div className="flex gap-2">
         <button
           onClick={handlePreview}
           disabled={!username.trim() || loading}
-          className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
           Preview
@@ -363,7 +363,7 @@ function PlexTab({ progress, connect, reset, cancel }: ReturnType<typeof useImpo
 
       {/* Saved credentials banner */}
       {savedLoading && (
-        <div className="flex items-center gap-2 text-sm text-slate-400">
+        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400">
           <Loader2 className="w-4 h-4 animate-spin" /> Checking saved Plex credentials…
         </div>
       )}
@@ -379,7 +379,7 @@ function PlexTab({ progress, connect, reset, cancel }: ReturnType<typeof useImpo
           </div>
           <button
             onClick={() => { setUsingSaved(false) }}
-            className="text-xs text-slate-400 hover:text-slate-200 underline flex-shrink-0"
+            className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 underline flex-shrink-0"
           >
             Use different server
           </button>
@@ -397,9 +397,9 @@ function PlexTab({ progress, connect, reset, cancel }: ReturnType<typeof useImpo
       )}
 
       {!savedLoading && !saved?.configured && (
-        <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-lg px-4 py-3">
-          <AlertTriangle className="w-4 h-4 text-slate-400 flex-shrink-0" />
-          <p className="text-sm text-slate-400">
+        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-3">
+          <AlertTriangle className="w-4 h-4 text-slate-500 dark:text-slate-500 dark:text-slate-400 flex-shrink-0" />
+          <p className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400">
             No Plex credentials saved.{' '}
             <a href="/settings" className="text-indigo-400 hover:text-indigo-300 underline">
               Configure in Settings
@@ -413,31 +413,31 @@ function PlexTab({ progress, connect, reset, cancel }: ReturnType<typeof useImpo
       {(!usingSaved || (saved?.configured && saved.error)) && (
         <>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Plex Server URL</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Plex Server URL</label>
             <input
               type="text"
               value={plexUrl}
               onChange={(e) => { setPlexUrl(e.target.value); setLibraries(null); setPreview(null) }}
               placeholder="http://192.168.1.100:32400"
-              className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-colors"
+              className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-colors"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Plex Token</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Plex Token</label>
             <div className="relative">
               <input
                 type={showToken ? 'text' : 'password'}
                 value={plexToken}
                 onChange={(e) => { setPlexToken(e.target.value); setLibraries(null); setPreview(null) }}
                 placeholder="Your Plex token"
-                className="w-full px-3 py-2.5 pr-10 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-colors"
+                className="w-full px-3 py-2.5 pr-10 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-colors"
               />
               <button type="button" onClick={() => setShowToken(s => !s)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:text-slate-300">
                 {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
               <a href="https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/"
                 target="_blank" rel="noopener noreferrer"
                 className="text-brand-400 hover:text-brand-300 underline">
@@ -447,7 +447,7 @@ function PlexTab({ progress, connect, reset, cancel }: ReturnType<typeof useImpo
           </div>
           <button onClick={handleManualConnect}
             disabled={!plexUrl.trim() || !plexToken.trim() || connecting}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2">
+            className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2">
             {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             Connect
           </button>
@@ -462,10 +462,10 @@ function PlexTab({ progress, connect, reset, cancel }: ReturnType<typeof useImpo
       {activeLibraries && activeLibraries.length > 0 && (
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Library</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Library</label>
             <select value={selectedKey}
               onChange={(e) => { setSelectedKey(e.target.value); setPreview(null) }}
-              className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:border-brand-500 transition-colors">
+              className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:border-brand-500 transition-colors">
               <option value="">Select a library…</option>
               {activeLibraries.map(lib => (
                 <option key={lib.key} value={lib.key}>{lib.title}</option>
@@ -476,7 +476,7 @@ function PlexTab({ progress, connect, reset, cancel }: ReturnType<typeof useImpo
           {selectedKey && (
             <div className="flex gap-2">
               <button onClick={handlePreview} disabled={previewing}
-                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2">
+                className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2">
                 {previewing ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 Preview
               </button>
@@ -490,7 +490,7 @@ function PlexTab({ progress, connect, reset, cancel }: ReturnType<typeof useImpo
       )}
 
       {activeLibraries && activeLibraries.length === 0 && !savedLoading && (
-        <p className="text-sm text-slate-400">No movie libraries found on this Plex server.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400">No movie libraries found on this Plex server.</p>
       )}
 
       {preview && <PreviewList movies={preview.movies} total={preview.total} />}
@@ -551,7 +551,7 @@ function FolderTab({ progress, connect, reset, cancel }: ReturnType<typeof useIm
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-1.5">Folder Path</label>
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Folder Path</label>
         <input
           type="text"
           value={folderPath}
@@ -560,9 +560,9 @@ function FolderTab({ progress, connect, reset, cancel }: ReturnType<typeof useIm
             setPreview(null)
           }}
           placeholder="C:\Movies or /home/user/movies"
-          className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-colors"
+          className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-colors"
         />
-        <p className="text-xs text-slate-500 mt-1">
+        <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
           Scans for .mkv, .mp4, .avi, .mov, .m4v, .ts, .wmv, .flv, .webm, .iso files
         </p>
       </div>
@@ -574,14 +574,14 @@ function FolderTab({ progress, connect, reset, cancel }: ReturnType<typeof useIm
           onChange={(e) => setRecursive(e.target.checked)}
           className="w-4 h-4 rounded accent-indigo-500"
         />
-        <span className="text-sm text-slate-300">Scan subfolders recursively</span>
+        <span className="text-sm text-slate-700 dark:text-slate-300">Scan subfolders recursively</span>
       </label>
 
       <div className="flex gap-2">
         <button
           onClick={handlePreview}
           disabled={!folderPath.trim() || loading}
-          className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
           Preview
@@ -639,13 +639,14 @@ export default function Import() {
 
   return (
     <div className="p-6 max-w-2xl">
-      <h1 className="text-2xl font-bold text-white mb-2">Bulk Import</h1>
-      <p className="text-sm text-slate-400 mb-6">
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-white
+ mb-2">Bulk Import</h1>
+      <p className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400 mb-6">
         Import movies from TMDB lists, Trakt, your Plex library, or a local folder.
       </p>
 
       {/* Tab bar */}
-      <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 mb-6 w-fit">
+      <div className="flex gap-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-1 mb-6 w-fit">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -653,7 +654,7 @@ export default function Import() {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               activeTab === tab.id
                 ? 'bg-brand-600 text-white'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                : 'text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:bg-slate-800'
             }`}
           >
             {tab.label}
@@ -662,7 +663,7 @@ export default function Import() {
       </div>
 
       {/* Tab content */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
         {activeTab === 'tmdb' && <TMDBListTab {...importProgress} />}
         {activeTab === 'trakt' && <TraktTab {...importProgress} />}
         {activeTab === 'plex' && <PlexTab {...importProgress} />}

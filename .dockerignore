@@ -1,0 +1,12 @@
+web/backend/venv/
+web/backend/movie_stats.db
+web/backend/*.db-shm
+web/backend/*.db-wal
+web/frontend/node_modules/
+web/frontend/dist/
+**/__pycache__/
+**/*.pyc
+exports/
+screenshots/
+.git
+.gitignore

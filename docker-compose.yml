@@ -1,0 +1,21 @@
+services:
+  backend:
+    build: ./web/backend
+    ports:
+      - "8899:8899"
+    volumes:
+      - movie_stats_data:/app
+    env_file:
+      - ./web/backend/.env
+    restart: unless-stopped
+
+  frontend:
+    build: ./web/frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  movie_stats_data:

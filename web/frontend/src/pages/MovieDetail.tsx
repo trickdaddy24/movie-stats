@@ -51,7 +51,7 @@ export default function MovieDetail() {
 
   if (isError || !movie) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-3 text-slate-500">
+      <div className="flex flex-col items-center justify-center h-screen gap-3 text-slate-500 dark:text-slate-500">
         <p className="text-lg">Movie not found</p>
         <button onClick={() => navigate('/library')} className="text-brand-500 hover:text-brand-400 text-sm">
           Back to Library
@@ -88,7 +88,7 @@ export default function MovieDetail() {
           onClick={() => setLightboxUrl(null)}
         >
           <button
-            className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+            className="absolute top-4 right-4 text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-white transition-colors"
             onClick={() => setLightboxUrl(null)}
           >
             <X className="w-8 h-8" />
@@ -121,7 +121,7 @@ export default function MovieDetail() {
           {/* Back button */}
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-slate-400 hover:text-slate-100 text-sm transition-colors mb-6"
+            className="flex items-center gap-2 text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 text-sm transition-colors mb-6"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
@@ -134,7 +134,7 @@ export default function MovieDetail() {
                 <img
                   src={primaryPoster}
                   alt={movie.title}
-                  className="w-48 rounded-xl shadow-2xl border border-slate-700 cursor-pointer"
+                  className="w-48 rounded-xl shadow-2xl border border-slate-300 dark:border-slate-700 cursor-pointer"
                   onClick={() => setLightboxUrl(primaryPoster)}
                 />
               </div>
@@ -142,10 +142,11 @@ export default function MovieDetail() {
 
             {/* Info */}
             <div className="flex-1 flex flex-col justify-end pb-2">
-              <h1 className="text-4xl font-bold text-white leading-tight">{movie.title}</h1>
+              <h1 className="text-4xl font-bold text-white
+ leading-tight">{movie.title}</h1>
 
               {movie.tagline && (
-                <p className="text-slate-400 italic mt-2">{movie.tagline}</p>
+                <p className="text-slate-500 dark:text-slate-500 dark:text-slate-400 italic mt-2">{movie.tagline}</p>
               )}
 
               {/* Meta row */}
@@ -155,27 +156,27 @@ export default function MovieDetail() {
                     <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
                     <span className="font-semibold">{getRating(movie.rating)}</span>
                     {movie.vote_count != null && (
-                      <span className="text-slate-500 text-sm">({movie.vote_count.toLocaleString()} votes)</span>
+                      <span className="text-slate-500 dark:text-slate-500 text-sm">({movie.vote_count.toLocaleString()} votes)</span>
                     )}
                   </span>
                 )}
 
                 {movie.runtime != null && movie.runtime > 0 && (
-                  <span className="flex items-center gap-1.5 text-slate-400">
+                  <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-500 dark:text-slate-400">
                     <Clock className="w-4 h-4" />
                     {formatRuntime(movie.runtime)}
                   </span>
                 )}
 
                 {movie.release_date && (
-                  <span className="flex items-center gap-1.5 text-slate-400">
+                  <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-500 dark:text-slate-400">
                     <Calendar className="w-4 h-4" />
                     {formatDate(movie.release_date)}
                   </span>
                 )}
 
                 {movie.content_rating && (
-                  <span className="px-2 py-0.5 border border-slate-500 text-slate-300 text-xs font-bold rounded">
+                  <span className="px-2 py-0.5 border border-slate-500 text-slate-700 dark:text-slate-300 text-xs font-bold rounded">
                     {movie.content_rating}
                   </span>
                 )}
@@ -201,7 +202,7 @@ export default function MovieDetail() {
                   <span className="px-2 py-1 bg-[#e5a00d]/20 border border-[#e5a00d]/40 text-[#e5a00d] text-xs font-semibold rounded">
                     PLEX
                   </span>
-                  <span className="text-slate-400 text-sm">Available in <span className="text-slate-200">{movie.plex_library}</span></span>
+                  <span className="text-slate-500 dark:text-slate-500 dark:text-slate-400 text-sm">Available in <span className="text-slate-200">{movie.plex_library}</span></span>
                 </div>
               )}
 
@@ -210,7 +211,7 @@ export default function MovieDetail() {
                 <button
                   onClick={() => refreshMutation.mutate()}
                   disabled={refreshMutation.isPending}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm rounded-lg border border-slate-700 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:bg-slate-700 text-slate-200 text-sm rounded-lg border border-slate-300 dark:border-slate-700 transition-colors"
                 >
                   {refreshMutation.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -247,7 +248,7 @@ export default function MovieDetail() {
         {movie.overview && (
           <section>
             <h2 className="text-lg font-semibold text-white mb-3">Overview</h2>
-            <p className="text-slate-300 leading-relaxed max-w-4xl">{movie.overview}</p>
+            <p className="text-slate-700 dark:text-slate-300 leading-relaxed max-w-4xl">{movie.overview}</p>
           </section>
         )}
 
@@ -265,7 +266,7 @@ export default function MovieDetail() {
                     className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize ${
                       artTab === tab
                         ? 'bg-brand-600 text-white'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200'
                     }`}
                   >
                     {tab} ({count})
@@ -277,7 +278,7 @@ export default function MovieDetail() {
               {artTabItems[artTab].map((art, i) => (
                 <div
                   key={i}
-                  className="flex-shrink-0 cursor-pointer rounded-lg overflow-hidden border border-slate-800 hover:border-brand-500 transition-colors"
+                  className="flex-shrink-0 cursor-pointer rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 hover:border-brand-500 transition-colors"
                   onClick={() => setLightboxUrl(art.url)}
                 >
                   <img
@@ -288,7 +289,7 @@ export default function MovieDetail() {
                         ? 'w-32 h-48'
                         : artTab === 'backdrops'
                         ? 'w-64 h-36'
-                        : 'w-48 h-24 object-contain bg-slate-900 p-2'
+                        : 'w-48 h-24 object-contain bg-slate-50 dark:bg-slate-900 p-2'
                     }`}
                     loading="lazy"
                   />
@@ -317,7 +318,7 @@ export default function MovieDetail() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
               {directors.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-2">
                     {directors.length === 1 ? 'Director' : 'Directors'}
                   </p>
                   {directors.map((p, i) => (
@@ -327,12 +328,12 @@ export default function MovieDetail() {
               )}
               {writers.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Writers</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-2">Writers</p>
                   {writers.map((p, i) => (
                     <p key={i} className="text-slate-200 text-sm">
                       {p.name}
                       {p.job && p.job !== 'Writer' && (
-                        <span className="text-slate-500 text-xs ml-1">({p.job})</span>
+                        <span className="text-slate-500 dark:text-slate-500 text-xs ml-1">({p.job})</span>
                       )}
                     </p>
                   ))}
@@ -384,10 +385,10 @@ function ExternalIdBadge({
   url?: string
 }) {
   const content = (
-    <span className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm">
-      <span className="text-slate-500 text-xs uppercase tracking-wider font-semibold">{label}</span>
-      <span className="text-slate-300">{value}</span>
-      {url && <ExternalLink className="w-3 h-3 text-slate-500" />}
+    <span className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm">
+      <span className="text-slate-500 dark:text-slate-500 text-xs uppercase tracking-wider font-semibold">{label}</span>
+      <span className="text-slate-700 dark:text-slate-300">{value}</span>
+      {url && <ExternalLink className="w-3 h-3 text-slate-500 dark:text-slate-500" />}
     </span>
   )
 

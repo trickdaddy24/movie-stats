@@ -1,9 +1,10 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Film, Library, Upload, Settings, FlaskConical, PlusCircle } from 'lucide-react'
+import { Film, Library, Upload, Settings, FlaskConical, PlusCircle, Sun, Moon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { getKeyStatus } from '../lib/api'
+import { useTheme } from '../context/ThemeContext'
 
-const VERSION = '1.4.8'
+const VERSION = '1.4.9'
 
 function KeyStatusDot() {
   const { data: keys } = useQuery({ queryKey: ['settings-keys'], queryFn: getKeyStatus })
@@ -16,18 +17,20 @@ function KeyStatusDot() {
 
 const NAV_LINK_CLASS = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-    isActive ? 'bg-brand-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+    isActive ? 'bg-brand-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
   }`
 
 export default function Layout() {
+  const { theme, toggle } = useTheme()
+
   return (
-    <div className="flex h-screen bg-slate-950 overflow-hidden">
+    <div className="flex h-screen bg-white dark:bg-slate-950 overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-56 flex-shrink-0 flex flex-col bg-slate-900 border-r border-slate-800">
+      <aside className="w-56 flex-shrink-0 flex flex-col bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800">
         {/* Logo */}
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-800">
+        <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-200 dark:border-slate-800">
           <Film className="w-7 h-7 text-brand-500 flex-shrink-0" />
-          <span className="text-lg font-bold text-white tracking-tight">MovieStats</span>
+          <span className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">MovieStats</span>
         </div>
 
         {/* Nav links */}
@@ -51,9 +54,18 @@ export default function Layout() {
           </NavLink>
         </nav>
 
-        {/* Version */}
-        <div className="px-5 py-4 border-t border-slate-800">
-          <p className="text-xs text-slate-600">v{VERSION}</p>
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-slate-500 dark:text-slate-600">v{VERSION}</p>
+            <button
+              onClick={toggle}
+              className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
       </aside>
 

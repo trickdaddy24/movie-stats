@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.4.9] - 2026-03-12
+
+### Added
+- **Light mode toggle** — users can now switch between dark (default) and light themes, persisted to localStorage with Sun/Moon icon button in sidebar
+- **Docker support** — single `docker compose up --build` command launches the full stack (backend on 8899, frontend on 80 via nginx); SQLite data persists via named volume; `.env.example` provides a template for API keys
+
+### Changed
+- **Frontend color scheme** — all 266+ hardcoded dark color classes now have light mode variants using Tailwind's `dark:` modifier (e.g., `bg-white dark:bg-slate-950`); maintains dark-first CSS paradigm but renders cleanly in both themes
+
 ## [1.4.8] - 2026-03-11
 
 ### Added

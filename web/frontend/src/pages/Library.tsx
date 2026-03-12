@@ -63,9 +63,10 @@ export default function Library() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Library</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white
+">Library</h1>
           {data && (
-            <p className="text-sm text-slate-500 mt-0.5">
+            <p className="text-sm text-slate-500 dark:text-slate-500 mt-0.5">
               {data.total} {data.total === 1 ? 'movie' : 'movies'}
             </p>
           )}
@@ -75,7 +76,7 @@ export default function Library() {
             onClick={handleRefreshAllArtwork}
             disabled={refreshing}
             title="Re-fetch posters from TMDB and fanart.tv for movies missing artwork"
-            className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-200 text-sm font-medium px-3 py-2 rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 text-slate-200 text-sm font-medium px-3 py-2 rounded-lg transition-colors"
           >
             {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
             Refresh Posters
@@ -91,7 +92,7 @@ export default function Library() {
       </div>
 
       {refreshMsg && (
-        <p className="mb-4 text-sm text-slate-300 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2">
+        <p className="mb-4 text-sm text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2">
           {refreshMsg}
         </p>
       )}
@@ -100,18 +101,18 @@ export default function Library() {
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <form onSubmit={handleSearch} className="flex gap-2 flex-1">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-slate-500" />
             <input
               type="text"
               placeholder="Search library..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-colors"
+              className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition-colors"
             />
           </div>
           <button
             type="submit"
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-100 text-sm rounded-lg transition-colors"
+            className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-100 text-sm rounded-lg transition-colors"
           >
             Search
           </button>
@@ -119,7 +120,7 @@ export default function Library() {
             <button
               type="button"
               onClick={() => { setSearch(''); setSearchInput(''); setPage(1) }}
-              className="px-3 py-2 text-slate-400 hover:text-slate-200 text-sm transition-colors"
+              className="px-3 py-2 text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 text-sm transition-colors"
             >
               Clear
             </button>
@@ -129,7 +130,7 @@ export default function Library() {
         <select
           value={genre}
           onChange={(e) => handleGenreChange(e.target.value)}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:border-brand-500 transition-colors"
+          className="px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:border-brand-500 transition-colors"
         >
           <option value="">All Genres</option>
           {GENRES.map((g) => (
@@ -146,14 +147,14 @@ export default function Library() {
       )}
 
       {isError && (
-        <div className="flex flex-col items-center justify-center h-64 text-slate-500">
+        <div className="flex flex-col items-center justify-center h-64 text-slate-500 dark:text-slate-500">
           <p className="text-lg">Failed to load library</p>
           <p className="text-sm mt-1">Make sure the backend is running on port 8899</p>
         </div>
       )}
 
       {!isLoading && !isError && data?.movies.length === 0 && (
-        <div className="flex flex-col items-center justify-center h-64 text-slate-500 gap-3">
+        <div className="flex flex-col items-center justify-center h-64 text-slate-500 dark:text-slate-500 gap-3">
           <Film className="w-16 h-16 text-slate-700" />
           <p className="text-lg font-medium">No movies yet</p>
           <p className="text-sm">Search to add one</p>
@@ -180,18 +181,18 @@ export default function Library() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 text-sm rounded-lg transition-colors"
+                className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 text-sm rounded-lg transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Prev
               </button>
-              <span className="text-sm text-slate-400">
+              <span className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400">
                 Page {page} of {data.pages}
               </span>
               <button
                 onClick={() => setPage((p) => Math.min(data.pages, p + 1))}
                 disabled={page === data.pages}
-                className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 text-sm rounded-lg transition-colors"
+                className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 text-sm rounded-lg transition-colors"
               >
                 Next
                 <ChevronRight className="w-4 h-4" />
