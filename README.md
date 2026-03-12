@@ -129,19 +129,41 @@ MovieStats/
 
 ### Prerequisites
 
-- Python 3.10+
-- Node.js 18+
-- [TMDB API key](https://www.themoviedb.org/settings/api) — free
-- [fanart.tv API key](https://fanart.tv/get-an-api-key/) — free, optional
+- [TMDB API key](https://www.themoviedb.org/settings/api) — free (required)
+- [fanart.tv API key](https://fanart.tv/get-an-api-key/) — free (optional)
 
-### 1. Clone
+### Option A: Docker (Recommended)
+
+**Requires:** Docker & Docker Compose only
+
+```bash
+git clone https://github.com/trickdaddy24/movie-stats.git
+cd movie-stats
+
+cp .env.example web/backend/.env
+# Edit .env and fill in your TMDB_API_KEY (and other optional keys)
+
+docker compose up --build
+```
+
+→ Frontend: **http://localhost** | Backend: **http://localhost:8899**
+
+Data persists in a named Docker volume. Restart with `docker compose restart`.
+
+---
+
+### Option B: Manual Setup
+
+**Requires:** Python 3.10+, Node.js 18+
+
+#### 1. Clone
 
 ```bash
 git clone https://github.com/trickdaddy24/movie-stats.git
 cd movie-stats
 ```
 
-### 2. Configure API Keys
+#### 2. Configure API Keys
 
 Run the interactive setup script — it will prompt for each key and save them to `web/backend/.env`:
 
@@ -152,51 +174,38 @@ python setup.py
 - **TMDB API key** is required
 - fanart.tv, Trakt, and Plex are optional — press Enter to skip
 
-### 3. Set Up Python Virtual Environment
+#### 3. Set Up Python Virtual Environment
 
 A virtual environment keeps project dependencies isolated from your system Python.
 
 **Windows:**
 ```bash
 cd web/backend
-
-# Create the virtual environment
 python -m venv venv
-
-# Activate it
 venv\Scripts\activate
-
-# Your prompt will change to show (venv) — now install dependencies
 pip install -r requirements.txt
 ```
 
 **macOS / Linux:**
 ```bash
 cd web/backend
-
-# Create the virtual environment
 python3 -m venv venv
-
-# Activate it
 source venv/bin/activate
-
-# Your prompt will change to show (venv) — now install dependencies
 pip install -r requirements.txt
 ```
 
-> To deactivate the virtual environment at any time, run `deactivate`.
-> Always activate it again before running `python main.py` in a new terminal session.
+> To deactivate: `deactivate`. Always activate again before running `python main.py` in a new terminal.
 
-### 4. Start Backend
+#### 4. Start Backend
 
 ```bash
-# Make sure your venv is active (you should see (venv) in your prompt)
+# Make sure venv is active (you should see (venv) in your prompt)
 python main.py
 ```
 
-Backend → **http://localhost:8899**
+→ Backend: **http://localhost:8899**
 
-### 5. Start Frontend
+#### 5. Start Frontend
 
 ```bash
 cd web/frontend
@@ -204,17 +213,7 @@ npm install
 npm run dev
 ```
 
-Frontend → **http://localhost:5175**
-
-### Docker (Alternative to Manual Setup)
-
-```bash
-cp .env.example web/backend/.env   # fill in your API keys
-
-docker compose up --build
-```
-
-Frontend → **http://localhost** | Backend → **http://localhost:8899**
+→ Frontend: **http://localhost:5175**
 
 ---
 
@@ -237,6 +236,8 @@ FANART_API_KEY=your_fanart_key_here
 
 ## Usage
 
+> **Note:** Whether you used Docker or manual setup, the app is now running. Access it at the URL shown above (Docker: http://localhost, Manual: http://localhost:5175).
+
 ### Search & Add a Movie
 
 1. Click **Search** in the sidebar
@@ -247,8 +248,9 @@ FANART_API_KEY=your_fanart_key_here
 ### Browse Your Library
 
 - **Library** — grid of all saved movies
-- Search bar filters by title
-- Genre dropdown filters by genre
+- **Search** — filter by title (case-insensitive)
+- **Sort** — 10 options: Newest/Oldest Added, Title A–Z/Z–A, Rating ↓/↑, Year ↓/↑, Runtime ↓/↑
+- **Genre pills** — click to toggle; select multiple genres at once (e.g., "Action" + "Thriller"); click "Clear" to reset
 - Click any card to open the full detail page
 
 ### Movie Detail Page
