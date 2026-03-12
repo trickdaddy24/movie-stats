@@ -87,8 +87,11 @@ export interface MovieListResponse {
 export interface MovieListParams {
   search?: string
   genre?: string
+  genres?: string[]
   page?: number
   page_size?: number
+  sort_by?: string
+  sort_dir?: 'asc' | 'desc'
 }
 
 export function searchTMDB(q: string, page = 1): Promise<TMDBSearchResponse> {

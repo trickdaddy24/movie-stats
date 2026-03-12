@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getKeyStatus } from '../lib/api'
 import { useTheme } from '../context/ThemeContext'
 
-const VERSION = '1.4.9'
+const VERSION = '1.4.10'
 
 function KeyStatusDot() {
   const { data: keys } = useQuery({ queryKey: ['settings-keys'], queryFn: getKeyStatus })

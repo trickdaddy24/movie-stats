@@ -287,13 +287,25 @@ def get_movie_full(movie_id: int) -> dict:
         return movie
 
 
-def list_movies(search: Optional[str] = None, genre: Optional[str] = None, page: int = 1, page_size: int = 20) -> dict:
+def list_movies(search: Optional[str] = None, genre: Optional[str] = None, genres: Optional[list] = None, page: int = 1, page_size: int = 20, sort_by: str = "added_at", sort_dir: str = "desc") -> dict:
     with get_db() as conn:
+        # Validate sort parameters
+        SORT_COLS = {"title", "release_date", "rating", "runtime", "added_at"}
+        if sort_by not in SORT_COLS:
+            sort_by = "added_at"
+        sort_dir = "ASC" if sort_dir.lower() == "asc" else "DESC"
+
         base_query = "FROM movies m"
         params: list = []
         where_clauses = []
 
-        if genre:
+        # Handle multi-genre or single genre
+        if genres and isinstance(genres, list) and len(genres) > 0:
+            base_query += " JOIN genres g ON g.movie_id = m.id"
+            placeholders = ",".join("?" * len(genres))
+            where_clauses.append(f"g.name IN ({placeholders})")
+            params.extend(genres)
+        elif genre:
             base_query += " JOIN genres g ON g.movie_id = m.id"
             where_clauses.append("g.name = ?")
             params.append(genre)
@@ -313,7 +325,7 @@ def list_movies(search: Optional[str] = None, genre: Optional[str] = None, page:
 
         offset = (page - 1) * page_size
         rows = conn.execute(
-            f"SELECT DISTINCT m.* {base_query}{where_sql} ORDER BY m.added_at DESC LIMIT ? OFFSET ?",
+            f"SELECT DISTINCT m.* {base_query}{where_sql} ORDER BY m.{sort_by} {sort_dir} LIMIT ? OFFSET ?",
             params + [page_size, offset],
         ).fetchall()
 

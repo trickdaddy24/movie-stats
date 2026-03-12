@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.10] - 2026-03-12
+
+### Added
+- **Sorting** — dropdown with 10 sort options: Newest/Oldest Added, Title A–Z/Z–A, Rating ↓/↑, Year ↓/↑, Runtime ↓/↑; changes apply immediately; page resets to 1
+- **Multi-genre filtering** — replaced single-select dropdown with clickable genre pills; users can filter by multiple genres at once (e.g., Action + Thriller); Clear button resets
+
+### Changed
+- **Library query** — `GET /api/movies` now accepts `sort_by`, `sort_dir` (asc/desc), and `genres[]` (array) parameters
+- **Database sorting** — `list_movies()` validates sort column against allowlist (title, release_date, rating, runtime, added_at); default remains "newest added"
+
 ## [1.4.9] - 2026-03-12
 
 ### Added

@@ -1,6 +1,6 @@
 """
 movie.db.py — Movie Database CLI
-Version: 1.4.9
+Version: 1.4.10
 
 Shares the same SQLite database as the web app (web/backend/movie_stats.db).
 """
@@ -42,7 +42,7 @@ def bold(t):  return _c(t, "1")
 def blue(t):  return _c(t, "94")
 def yellow(t):return _c(t, "93")
 
-VERSION = "1.4.9"
+VERSION = "1.4.10"
 
 API_KEYS = [
     {"key": "TMDB_API_KEY",    "label": "TMDB API Key",    "required": True,  "hint": "https://www.themoviedb.org/settings/api"},

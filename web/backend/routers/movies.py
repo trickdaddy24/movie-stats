@@ -15,10 +15,13 @@ class ExternalIdBody(BaseModel):
 def list_movies(
     search: Optional[str] = Query(None),
     genre: Optional[str] = Query(None),
+    genres: list[str] = Query([]),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    sort_by: str = Query("added_at"),
+    sort_dir: str = Query("desc"),
 ):
-    return db.list_movies(search=search, genre=genre, page=page, page_size=page_size)
+    return db.list_movies(search=search, genre=genre, genres=genres if genres else None, page=page, page_size=page_size, sort_by=sort_by, sort_dir=sort_dir)
 
 
 @router.get("/movies/{movie_id}")
