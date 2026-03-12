@@ -82,20 +82,19 @@ def setup_db():
             );
         """)
 
-    # Migrations for existing databases
-    try:
-        conn.execute("ALTER TABLE movies ADD COLUMN content_rating TEXT")
-    except Exception:
-        pass  # column already exists
-    try:
-        conn.execute("ALTER TABLE movies ADD COLUMN source TEXT DEFAULT 'manual'")
-    except Exception:
-        pass
-    try:
-        conn.execute("ALTER TABLE movies ADD COLUMN plex_library TEXT")
-    except Exception:
-        pass
-    conn.commit()
+        # Migrations for existing databases
+        try:
+            conn.execute("ALTER TABLE movies ADD COLUMN content_rating TEXT")
+        except Exception:
+            pass  # column already exists
+        try:
+            conn.execute("ALTER TABLE movies ADD COLUMN source TEXT DEFAULT 'manual'")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE movies ADD COLUMN plex_library TEXT")
+        except Exception:
+            pass
 
 
 @contextmanager
