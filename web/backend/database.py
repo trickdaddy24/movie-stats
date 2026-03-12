@@ -24,6 +24,9 @@ def setup_db():
                 rating REAL,
                 vote_count INTEGER,
                 tagline TEXT,
+                content_rating TEXT,
+                source TEXT DEFAULT 'manual',
+                plex_library TEXT,
                 status TEXT DEFAULT 'active',
                 added_at TEXT
             );
@@ -79,6 +82,21 @@ def setup_db():
             );
         """)
 
+    # Migrations for existing databases
+    try:
+        conn.execute("ALTER TABLE movies ADD COLUMN content_rating TEXT")
+    except Exception:
+        pass  # column already exists
+    try:
+        conn.execute("ALTER TABLE movies ADD COLUMN source TEXT DEFAULT 'manual'")
+    except Exception:
+        pass
+    try:
+        conn.execute("ALTER TABLE movies ADD COLUMN plex_library TEXT")
+    except Exception:
+        pass
+    conn.commit()
+
 
 @contextmanager
 def get_db():
@@ -102,10 +120,12 @@ def add_movie(movie_data: dict) -> int:
             """
             INSERT INTO movies
                 (tmdb_id, imdb_id, title, original_title, overview,
-                 release_date, runtime, rating, vote_count, tagline, status, added_at)
+                 release_date, runtime, rating, vote_count, tagline, content_rating,
+                 source, plex_library, status, added_at)
             VALUES
                 (:tmdb_id, :imdb_id, :title, :original_title, :overview,
-                 :release_date, :runtime, :rating, :vote_count, :tagline, :status, :added_at)
+                 :release_date, :runtime, :rating, :vote_count, :tagline, :content_rating,
+                 :source, :plex_library, :status, :added_at)
             ON CONFLICT(tmdb_id) DO UPDATE SET
                 imdb_id=excluded.imdb_id,
                 title=excluded.title,
@@ -115,7 +135,8 @@ def add_movie(movie_data: dict) -> int:
                 runtime=excluded.runtime,
                 rating=excluded.rating,
                 vote_count=excluded.vote_count,
-                tagline=excluded.tagline
+                tagline=excluded.tagline,
+                content_rating=excluded.content_rating
             """,
             {
                 "tmdb_id": movie_data.get("tmdb_id"),
@@ -128,6 +149,9 @@ def add_movie(movie_data: dict) -> int:
                 "rating": movie_data.get("rating"),
                 "vote_count": movie_data.get("vote_count"),
                 "tagline": movie_data.get("tagline"),
+                "content_rating": movie_data.get("content_rating"),
+                "source": movie_data.get("source", "manual"),
+                "plex_library": movie_data.get("plex_library"),
                 "status": movie_data.get("status", "active"),
                 "added_at": movie_data.get("added_at", datetime.now(timezone.utc).isoformat()),
             },

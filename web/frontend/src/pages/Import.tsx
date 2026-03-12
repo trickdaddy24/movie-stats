@@ -345,7 +345,8 @@ function PlexTab({ progress, connect, reset, cancel }: ReturnType<typeof useImpo
     if (!selectedKey) return
     setError(null)
     try {
-      const { job_id } = await startPlexImport(activePlexUrl, plexToken.trim() || '', selectedKey)
+      const selectedLibraryName = activeLibraries?.find(l => l.key === selectedKey)?.title ?? ''
+      const { job_id } = await startPlexImport(activePlexUrl, plexToken.trim() || '', selectedKey, selectedLibraryName)
       connect(job_id)
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Import failed'

@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.8] - 2026-03-11
+
+### Added
+- **Content Rating (PG-13, R, etc.)** — Movies now display MPAA/BBFC content ratings fetched from TMDB's release_dates endpoint. Shows as a badge in the movie detail meta row and on movie cards
+- **Plex Source Tracking** — Movies imported from Plex now track their source and Plex library name. Movie cards show a yellow "PLEX" badge; movie detail page displays "Available in [Library Name]" with Plex branding. Enables quick identification of which movies are available on your Plex server
+
+### Changed
+- **Plex import flow** — `POST /api/import/plex/start` now requires `library_name` param to track the source library; frontend automatically derives it from the selected library before starting import
+- **Database schema** — Added `content_rating TEXT`, `source TEXT DEFAULT 'manual'`, and `plex_library TEXT` columns to movies table with automatic migrations for existing databases
+
 ## [1.4.7] - 2026-03-10
 
 ### Fixed

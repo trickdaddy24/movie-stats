@@ -63,6 +63,9 @@ export interface Movie {
   rating?: number
   vote_count?: number
   tagline?: string
+  content_rating?: string
+  source?: string
+  plex_library?: string
   status: string
   added_at?: string
   genres?: string[]
@@ -227,8 +230,8 @@ export const startTMDBListImport = (listId: string) =>
 export const startTraktImport = (username: string, listSlug?: string) =>
   api.post<{ job_id: string; total: number }>('/import/trakt/start', { username, list_slug: listSlug || null }).then((r) => r.data)
 
-export const startPlexImport = (plex_url: string, plex_token: string, section_key: string) =>
-  api.post<{ job_id: string; total: number }>('/import/plex/start', { plex_url, plex_token, section_key }).then((r) => r.data)
+export const startPlexImport = (plex_url: string, plex_token: string, section_key: string, library_name: string = '') =>
+  api.post<{ job_id: string; total: number }>('/import/plex/start', { plex_url, plex_token, section_key, library_name }).then((r) => r.data)
 
 export const startFolderImport = (folder_path: string, recursive = true) =>
   api.post<{ job_id: string; total: number }>('/import/folder/start', { folder_path, recursive }).then((r) => r.data)

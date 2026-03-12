@@ -173,6 +173,12 @@ export default function MovieDetail() {
                     {formatDate(movie.release_date)}
                   </span>
                 )}
+
+                {movie.content_rating && (
+                  <span className="px-2 py-0.5 border border-slate-500 text-slate-300 text-xs font-bold rounded">
+                    {movie.content_rating}
+                  </span>
+                )}
               </div>
 
               {/* Genres */}
@@ -186,6 +192,16 @@ export default function MovieDetail() {
                       {g}
                     </span>
                   ))}
+                </div>
+              )}
+
+              {/* Plex availability */}
+              {movie.source === 'plex' && movie.plex_library && (
+                <div className="flex items-center gap-2 mt-3">
+                  <span className="px-2 py-1 bg-[#e5a00d]/20 border border-[#e5a00d]/40 text-[#e5a00d] text-xs font-semibold rounded">
+                    PLEX
+                  </span>
+                  <span className="text-slate-400 text-sm">Available in <span className="text-slate-200">{movie.plex_library}</span></span>
                 </div>
               )}
 

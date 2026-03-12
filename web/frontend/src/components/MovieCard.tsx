@@ -41,12 +41,26 @@ export default function MovieCard({ movie }: Props) {
           </div>
         )}
 
+        {/* Plex badge */}
+        {movie.source === 'plex' && (
+          <span className="absolute top-2 left-2 px-2 py-0.5 bg-[#e5a00d]/90 text-black text-[10px] font-bold rounded">
+            PLEX
+          </span>
+        )}
+
         {/* Rating badge */}
         {movie.rating != null && movie.rating > 0 && (
           <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/70 backdrop-blur-sm rounded-md px-1.5 py-0.5">
             <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
             <span className="text-xs font-semibold text-white">{movie.rating.toFixed(1)}</span>
           </div>
+        )}
+
+        {/* Content rating badge */}
+        {movie.content_rating && (
+          <span className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-black/70 border border-slate-500 text-slate-200 text-[10px] font-bold rounded">
+            {movie.content_rating}
+          </span>
         )}
       </div>
 

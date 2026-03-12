@@ -69,7 +69,7 @@ def _new_job(source: str) -> str:
     return job_id
 
 
-def _import_single_movie(tmdb_id: int) -> None:
+def _import_single_movie(tmdb_id: int, source: str = "manual", plex_library: str | None = None) -> None:
     """Import one movie by TMDB ID. Raises on failure."""
     movie_data = tmdb.get_movie(tmdb_id)
     fanart_art = fanart.get_movie_art_flat(tmdb_id)
@@ -85,6 +85,9 @@ def _import_single_movie(tmdb_id: int) -> None:
         "rating": movie_data.get("rating"),
         "vote_count": movie_data.get("vote_count"),
         "tagline": movie_data.get("tagline"),
+        "content_rating": movie_data.get("content_rating"),
+        "source": source,
+        "plex_library": plex_library,
         "status": "active",
         "added_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -144,7 +147,7 @@ def _run_import(job_id: str, movies_to_import: list[dict], source: str, source_d
                 status = "skipped"
                 skipped += 1
             else:
-                _import_single_movie(tmdb_id)
+                _import_single_movie(tmdb_id, source=movie.get("source", source), plex_library=movie.get("plex_library"))
                 status = "imported"
                 imported += 1
 
@@ -222,7 +225,7 @@ def _resolve_folder_movies(parsed_movies: list[dict]) -> tuple[list[dict], list[
     return resolved, unresolved, last_api_error
 
 
-def _run_plex_import(job_id: str, plex_url: str, plex_token: str, section_key: str) -> None:
+def _run_plex_import(job_id: str, plex_url: str, plex_token: str, section_key: str, library_name: str = "") -> None:
     """Fetch Plex library in the background thread, then run the standard import loop."""
     try:
         movies = plex_client.get_library_movies(plex_url, plex_token, section_key)
@@ -236,7 +239,7 @@ def _run_plex_import(job_id: str, plex_url: str, plex_token: str, section_key: s
         _jobs[job_id]["done"] = True
         return
 
-    importable = [m for m in movies if m.get("tmdb_id")]
+    importable = [m | {"source": "plex", "plex_library": library_name} for m in movies if m.get("tmdb_id")]
     unresolved = [m for m in movies if not m.get("tmdb_id")]
     all_movies: list[dict] = importable + [
         {"tmdb_id": None, "title": m.get("title", "Unknown")} for m in unresolved
@@ -304,6 +307,7 @@ class PlexStartBody(BaseModel):
     plex_url: str
     plex_token: str
     section_key: str
+    library_name: str = ""
 
 
 class FolderStartBody(BaseModel):
@@ -540,7 +544,7 @@ def start_plex_import(body: PlexStartBody):
     job_id = _new_job("plex")
     t = threading.Thread(
         target=_run_plex_import,
-        args=(job_id, body.plex_url, plex_token, body.section_key),
+        args=(job_id, body.plex_url, plex_token, body.section_key, body.library_name),
         daemon=True,
     )
     t.start()

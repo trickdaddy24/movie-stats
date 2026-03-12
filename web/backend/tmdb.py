@@ -72,7 +72,7 @@ def search_movies(query: str, page: int = 1) -> dict:
 def get_movie(tmdb_id: int) -> dict:
     data = _get(
         f"/movie/{tmdb_id}",
-        {"append_to_response": "credits,external_ids,images", "include_image_language": "en,null"},
+        {"append_to_response": "credits,external_ids,images,release_dates", "include_image_language": "en,null"},
     )
 
     credits = data.get("credits", {})
@@ -157,6 +157,14 @@ def get_movie(tmdb_id: int) -> dict:
             "likes": 0,
         })
 
+    # Parse US content rating from release_dates
+    content_rating = None
+    rd = data.get("release_dates", {})
+    us = next((r for r in rd.get("results", []) if r.get("iso_3166_1") == "US"), None)
+    if us:
+        certs = [e.get("certification", "") for e in us.get("release_dates", []) if e.get("certification")]
+        content_rating = certs[0] if certs else None
+
     return {
         "tmdb_id": data.get("id"),
         "imdb_id": ext_ids.get("imdb_id"),
@@ -168,6 +176,7 @@ def get_movie(tmdb_id: int) -> dict:
         "rating": data.get("vote_average"),
         "vote_count": data.get("vote_count"),
         "tagline": data.get("tagline"),
+        "content_rating": content_rating,
         "genres": genres,
         "cast": cast,
         "crew": crew,
