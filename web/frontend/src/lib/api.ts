@@ -4,6 +4,29 @@ export const api = axios.create({
   baseURL: '/api',
 })
 
+// Request interceptor — attach JWT token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+// Response interceptor — handle 401 globally
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Clear auth and redirect to login
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
+  }
+)
+
 export interface TMDBSearchResult {
   tmdb_id: number
   title: string
@@ -266,6 +289,89 @@ export const getKeyStatus = () =>
 
 export const updateKeys = (body: { updates: Record<string, string> }) =>
   api.patch<KeyStatus[]>('/settings/keys', body).then((r) => r.data)
+
+// ---------------------------------------------------------------------------
+// Auth — User registration and login
+// ---------------------------------------------------------------------------
+
+export interface User {
+  id: number
+  username: string
+  email: string
+  is_active: number
+  created_at: string
+}
+
+export interface AuthResponse {
+  access_token: string
+  token_type: string
+  user: User
+}
+
+export function register(username: string, email: string, password: string): Promise<AuthResponse> {
+  return api.post('/auth/register', { username, email, password }).then((r) => r.data)
+}
+
+export function login(username: string, password: string): Promise<AuthResponse> {
+  return api.post('/auth/login', { username, password }).then((r) => r.data)
+}
+
+export function getMe(): Promise<User> {
+  return api.get('/auth/me').then((r) => r.data)
+}
+
+// ---------------------------------------------------------------------------
+// Lists — User personal lists (Favorites, Watchlist, Custom)
+// ---------------------------------------------------------------------------
+
+export interface UserList {
+  id: number
+  user_id: number
+  name: string
+  list_type: 'favorites' | 'watchlist' | 'custom'
+  description?: string
+  created_at: string
+  movie_count: number
+}
+
+export interface MovieInList {
+  id: number
+  tmdb_id: number
+  title: string
+  rating?: number
+  release_date?: string
+  runtime?: number
+  poster_url?: string
+  genres: string[]
+}
+
+export function getLists(): Promise<UserList[]> {
+  return api.get('/lists').then((r) => r.data)
+}
+
+export function createList(name: string, description?: string): Promise<UserList> {
+  return api.post('/lists', { name, description }).then((r) => r.data)
+}
+
+export function getList(listId: number): Promise<{ list: UserList; movies: MovieInList[] }> {
+  return api.get(`/lists/${listId}`).then((r) => r.data)
+}
+
+export function deleteList(listId: number): Promise<{ success: boolean }> {
+  return api.delete(`/lists/${listId}`).then((r) => r.data)
+}
+
+export function addToList(listId: number, movieId: number): Promise<{ success: boolean }> {
+  return api.post(`/lists/${listId}/movies`, { movie_id: movieId }).then((r) => r.data)
+}
+
+export function removeFromList(listId: number, movieId: number): Promise<{ success: boolean }> {
+  return api.delete(`/lists/${listId}/movies/${movieId}`).then((r) => r.data)
+}
+
+export function getMovieLists(movieId: number): Promise<{ list_ids: number[] }> {
+  return api.get(`/lists/movies/${movieId}/lists`).then((r) => r.data)
+}
 
 // ---------------------------------------------------------------------------
 // Stats — Library analytics

@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.6.0] - 2026-03-12
+
+### Added
+- **Multi-user authentication** — JWT-based login/register with bcrypt password hashing; 7-day token expiry stored in localStorage
+- **Per-user private library** — Each user has their own collection; movies are scoped by `user_id` across all queries
+- **Personal lists** — Three types of lists: built-in Favorites and Watchlist (auto-created at registration), plus unlimited custom lists (user-named with optional descriptions)
+- **List management API** — Full CRUD for lists + movie membership (add/remove); lists paginate and show movie counts
+- **Auth pages** — Login and Register pages with error handling; protected routes redirect to login if unauthenticated
+- **JWT interceptors** — Axios request interceptor attaches Bearer token; response interceptor catches 401 and redirects to login
+- **AuthContext** — React context for auth state management (user info + token); persists to localStorage
+- **Lists page** — Browse Favorites, Watchlist, and custom lists; create new lists inline; delete custom lists
+- **Sidebar auth info** — Shows logged-in username in footer; logout button clears token and navigates to login
+- **CORS fix** — Changed from wildcard `allow_origins=["*"]` to explicit localhost origins (required for credentials)
+
+### Migration Notes
+⚠️ **Breaking change:** The `movies` table now requires a `user_id` foreign key. Existing movies (added before v1.6.0) will have `user_id = NULL` and will not be visible to any user. Users must create an account and re-import their Plex/TMDB/Folder imports to populate their libraries.
+
+### Changed
+- `/api/*` endpoints now require JWT authentication (via `Authorization: Bearer <token>` header or 401 redirect)
+- Database schema: added `users`, `user_lists`, `user_list_movies` tables; added `user_id` columns to `movies` and `import_sessions`
+- Backend CORS: `allow_origins` now explicitly lists localhost origins instead of wildcard
+- Frontend routing: public routes (/login, /register) outside Layout; protected routes inside ProtectedRoute wrapper
+
 ## [1.5.0] - 2026-03-12
 
 ### Added

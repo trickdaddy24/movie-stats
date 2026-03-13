@@ -80,6 +80,33 @@ def setup_db():
                 failed INTEGER DEFAULT 0,
                 log_json TEXT DEFAULT '[]'
             );
+
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                hashed_password TEXT NOT NULL,
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS user_lists (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                list_type TEXT NOT NULL DEFAULT 'custom',
+                description TEXT,
+                created_at TEXT DEFAULT (datetime('now')),
+                UNIQUE(user_id, list_type)
+            );
+
+            CREATE TABLE IF NOT EXISTS user_list_movies (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                list_id INTEGER NOT NULL REFERENCES user_lists(id) ON DELETE CASCADE,
+                movie_id INTEGER NOT NULL REFERENCES movies(id) ON DELETE CASCADE,
+                added_at TEXT DEFAULT (datetime('now')),
+                UNIQUE(list_id, movie_id)
+            );
         """)
 
         # Migrations for existing databases
@@ -93,6 +120,14 @@ def setup_db():
             pass
         try:
             conn.execute("ALTER TABLE movies ADD COLUMN plex_library TEXT")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE movies ADD COLUMN user_id INTEGER REFERENCES users(id)")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE import_sessions ADD COLUMN user_id INTEGER REFERENCES users(id)")
         except Exception:
             pass
 
@@ -420,3 +455,169 @@ def get_import_sessions(limit: int = 20) -> list[dict]:
             (limit,),
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# User management
+# ---------------------------------------------------------------------------
+
+def create_user(username: str, email: str, hashed_password: str) -> dict:
+    """Create a new user and return user dict."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO users (username, email, hashed_password)
+            VALUES (?, ?, ?)
+            """,
+            (username, email, hashed_password),
+        )
+        user_id = cursor.lastrowid
+        # Create default Favorites and Watchlist lists
+        create_default_lists(user_id)
+        return get_user_by_id(user_id)
+
+
+def get_user_by_username(username: str) -> Optional[dict]:
+    """Get user by username."""
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT id, username, email, hashed_password, is_active, created_at FROM users WHERE username=?",
+            (username,),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def get_user_by_id(user_id: int) -> Optional[dict]:
+    """Get user by ID."""
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT id, username, email, is_active, created_at FROM users WHERE id=?",
+            (user_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def create_default_lists(user_id: int) -> None:
+    """Create default Favorites and Watchlist lists for a user."""
+    with get_db() as conn:
+        conn.executemany(
+            """
+            INSERT OR IGNORE INTO user_lists (user_id, name, list_type)
+            VALUES (?, ?, ?)
+            """,
+            [
+                (user_id, "Favorites", "favorites"),
+                (user_id, "Watchlist", "watchlist"),
+            ],
+        )
+
+
+def get_user_lists(user_id: int) -> list[dict]:
+    """Get all lists for a user with movie counts."""
+    with get_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT ul.id, ul.user_id, ul.name, ul.list_type, ul.description, ul.created_at,
+                   COUNT(ulm.id) as movie_count
+            FROM user_lists ul
+            LEFT JOIN user_list_movies ulm ON ul.id = ulm.list_id
+            WHERE ul.user_id = ?
+            GROUP BY ul.id
+            ORDER BY ul.list_type DESC, ul.name ASC
+            """,
+            (user_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_list_movies(list_id: int, user_id: int) -> list[dict]:
+    """Get all movies in a list, with ownership verification."""
+    with get_db() as conn:
+        # Verify list ownership
+        list_row = conn.execute(
+            "SELECT user_id FROM user_lists WHERE id=?",
+            (list_id,),
+        ).fetchone()
+        if not list_row or list_row["user_id"] != user_id:
+            return []
+
+        rows = conn.execute(
+            """
+            SELECT m.* FROM movies m
+            JOIN user_list_movies ulm ON m.id = ulm.movie_id
+            WHERE ulm.list_id = ?
+            ORDER BY ulm.added_at DESC
+            """,
+            (list_id,),
+        ).fetchall()
+
+        movies = []
+        for row in rows:
+            m = dict(row)
+            genre_rows = conn.execute(
+                "SELECT name FROM genres WHERE movie_id=?", (m["id"],)
+            ).fetchall()
+            m["genres"] = [r["name"] for r in genre_rows]
+            artwork_row = conn.execute(
+                "SELECT url FROM artwork WHERE movie_id=? AND type='poster' ORDER BY likes DESC LIMIT 1",
+                (m["id"],),
+            ).fetchone()
+            m["poster_url"] = artwork_row["url"] if artwork_row else None
+            movies.append(m)
+        return movies
+
+
+def add_movie_to_list(list_id: int, movie_id: int, user_id: int) -> bool:
+    """Add a movie to a list, with ownership verification."""
+    with get_db() as conn:
+        # Verify list ownership
+        list_row = conn.execute(
+            "SELECT user_id FROM user_lists WHERE id=?",
+            (list_id,),
+        ).fetchone()
+        if not list_row or list_row["user_id"] != user_id:
+            return False
+
+        try:
+            conn.execute(
+                """
+                INSERT INTO user_list_movies (list_id, movie_id)
+                VALUES (?, ?)
+                """,
+                (list_id, movie_id),
+            )
+            return True
+        except Exception:
+            return False  # UNIQUE constraint violation or other error
+
+
+def remove_movie_from_list(list_id: int, movie_id: int, user_id: int) -> bool:
+    """Remove a movie from a list, with ownership verification."""
+    with get_db() as conn:
+        # Verify list ownership
+        list_row = conn.execute(
+            "SELECT user_id FROM user_lists WHERE id=?",
+            (list_id,),
+        ).fetchone()
+        if not list_row or list_row["user_id"] != user_id:
+            return False
+
+        conn.execute(
+            "DELETE FROM user_list_movies WHERE list_id=? AND movie_id=?",
+            (list_id, movie_id),
+        )
+        return True
+
+
+def get_movie_list_membership(movie_id: int, user_id: int) -> list[int]:
+    """Get list IDs that contain a movie (for a given user)."""
+    with get_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT ul.id FROM user_lists ul
+            JOIN user_list_movies ulm ON ul.id = ulm.list_id
+            WHERE ul.user_id = ? AND ulm.movie_id = ?
+            """,
+            (user_id, movie_id),
+        ).fetchall()
+        return [r["id"] for r in rows]
