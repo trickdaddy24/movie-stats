@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.1] - 2026-03-12
+
+### Fixed
+- **Frontend provider order** — Fixed React query context error by moving QueryClientProvider to wrap all other providers
+- **Password hashing** — Switched from bcrypt to argon2-cffi to eliminate 72-byte password length limit
+- **Database transaction lock** — Fixed SQLite lock errors during user registration by reusing connection for default list creation and user fetch
+- **Database connection timeout** — Added 10-second timeout to SQLite connections to handle concurrent access gracefully
+
 ## [1.6.0] - 2026-03-12
 
 ### Added

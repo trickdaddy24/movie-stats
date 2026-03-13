@@ -26,9 +26,9 @@ const queryClient = new QueryClient({
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <AuthProvider>
           <BrowserRouter>
             <Routes>
               {/* Public routes */}
@@ -51,8 +51,8 @@ export default function App() {
               </Route>
             </Routes>
           </BrowserRouter>
-        </QueryClientProvider>
-      </AuthProvider>
-    </ThemeProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   )
 }

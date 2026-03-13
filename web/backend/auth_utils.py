@@ -13,14 +13,14 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
 
 # Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 # OAuth2 scheme for FastAPI
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 def hash_password(password: str) -> str:
-    """Hash a password using bcrypt."""
+    """Hash a password using argon2."""
     return pwd_context.hash(password)
 
 

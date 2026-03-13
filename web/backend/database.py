@@ -134,7 +134,7 @@ def setup_db():
 
 @contextmanager
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=10.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
@@ -473,8 +473,13 @@ def create_user(username: str, email: str, hashed_password: str) -> dict:
         )
         user_id = cursor.lastrowid
         # Create default Favorites and Watchlist lists
-        create_default_lists(user_id)
-        return get_user_by_id(user_id)
+        _create_default_lists(conn, user_id)
+        # Fetch the created user
+        row = conn.execute(
+            "SELECT id, username, email, is_active, created_at FROM users WHERE id=?",
+            (user_id,),
+        ).fetchone()
+        return dict(row) if row else {}
 
 
 def get_user_by_username(username: str) -> Optional[dict]:
@@ -497,19 +502,18 @@ def get_user_by_id(user_id: int) -> Optional[dict]:
         return dict(row) if row else None
 
 
-def create_default_lists(user_id: int) -> None:
+def _create_default_lists(conn, user_id: int) -> None:
     """Create default Favorites and Watchlist lists for a user."""
-    with get_db() as conn:
-        conn.executemany(
-            """
-            INSERT OR IGNORE INTO user_lists (user_id, name, list_type)
-            VALUES (?, ?, ?)
-            """,
-            [
-                (user_id, "Favorites", "favorites"),
-                (user_id, "Watchlist", "watchlist"),
-            ],
-        )
+    conn.executemany(
+        """
+        INSERT OR IGNORE INTO user_lists (user_id, name, list_type)
+        VALUES (?, ?, ?)
+        """,
+        [
+            (user_id, "Favorites", "favorites"),
+            (user_id, "Watchlist", "watchlist"),
+        ],
+    )
 
 
 def get_user_lists(user_id: int) -> list[dict]:
