@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.5] - 2026-03-13
+
+### Added
+- **List detail view** — Click on any list (Favorites, Watchlist, custom) to view all movies in it
+- **Remove from list UI** — Hover over movies in list detail to remove them with trash icon overlay
+- **List navigation** — Breadcrumb to navigate back to Lists page
+
 ## [1.6.4] - 2026-03-13
 
 ### Added
