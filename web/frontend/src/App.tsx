@@ -15,6 +15,7 @@ import Register from './pages/Register'
 import Lists from './pages/Lists'
 import ListDetail from './pages/ListDetail'
 import TestMatch from './pages/TestMatch'
+import PersonDetail from './pages/PersonDetail'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,6 +44,7 @@ export default function App() {
                   <Route path="/library" element={<Library />} />
                   <Route path="/search" element={<Search />} />
                   <Route path="/movies/:id" element={<MovieDetail />} />
+                  <Route path="/person/:tmdbPersonId" element={<PersonDetail />} />
                   <Route path="/import" element={<Import />} />
                   <Route path="/stats" element={<Stats />} />
                   <Route path="/lists" element={<Lists />} />

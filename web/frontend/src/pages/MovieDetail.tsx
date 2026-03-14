@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Star, Clock, Calendar, Trash2, RefreshCw, ExternalLink, Loader2, X, Heart, Bookmark, Plus
@@ -472,7 +472,17 @@ export default function MovieDetail() {
                     {directors.length === 1 ? 'Director' : 'Directors'}
                   </p>
                   {directors.map((p, i) => (
-                    <p key={i} className="text-slate-200 text-sm">{p.name}</p>
+                    p.tmdb_person_id ? (
+                      <Link
+                        key={i}
+                        to={`/person/${p.tmdb_person_id}`}
+                        className="text-slate-200 text-sm hover:text-brand-400 transition-colors block"
+                      >
+                        {p.name}
+                      </Link>
+                    ) : (
+                      <p key={i} className="text-slate-200 text-sm">{p.name}</p>
+                    )
                   ))}
                 </div>
               )}
@@ -480,12 +490,21 @@ export default function MovieDetail() {
                 <div>
                   <p className="text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider mb-2">Writers</p>
                   {writers.map((p, i) => (
-                    <p key={i} className="text-slate-200 text-sm">
-                      {p.name}
+                    <div key={i} className="text-slate-200 text-sm">
+                      {p.tmdb_person_id ? (
+                        <Link
+                          to={`/person/${p.tmdb_person_id}`}
+                          className="hover:text-brand-400 transition-colors"
+                        >
+                          {p.name}
+                        </Link>
+                      ) : (
+                        p.name
+                      )}
                       {p.job && p.job !== 'Writer' && (
                         <span className="text-slate-500 dark:text-slate-500 text-xs ml-1">({p.job})</span>
                       )}
-                    </p>
+                    </div>
                   ))}
                 </div>
               )}

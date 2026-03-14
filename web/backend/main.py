@@ -13,8 +13,9 @@ from routers.stats import router as stats_router
 from routers.auth import router as auth_router
 from routers.lists import router as lists_router
 from routers.test_match import router as test_router
+from routers.person import router as person_router
 
-app = FastAPI(title="Movie Stats API", version="1.6.9")
+app = FastAPI(title="Movie Stats API", version="1.7.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,6 +34,7 @@ app.include_router(settings_router, prefix="/api")
 app.include_router(stats_router, prefix="/api")
 app.include_router(lists_router, prefix="/api")
 app.include_router(test_router, prefix="/api")
+app.include_router(person_router, prefix="/api")
 
 
 @app.on_event("startup")
@@ -53,7 +55,7 @@ def startup():
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "version": "1.6.9"}
+    return {"status": "ok", "version": "1.7.0"}
 
 
 if __name__ == "__main__":

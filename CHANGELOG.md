@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.7.0] - 2026-03-13
+
+### Added
+- **Person detail page** — Click any cast/crew member to view their full filmography with acting and crew credits separated by tabs
+- **Filmography grid** — Movies displayed as cards with poster, year, character/job title, and rating
+- **Library highlighting** — Movies already in your library show a green "IN LIBRARY" badge and link directly to that movie
+- **Hero section** — Person bio with "Read more" toggle, birthday/birthplace info, profile photo, IMDb link
+- **Crew links** — Directors and writers in MovieDetail are now clickable links to their person pages
+- **Cast links** — Cast members on MovieDetail and in cast sections are now clickable
+
 ## [1.6.9] - 2026-03-13
 
 ### Fixed

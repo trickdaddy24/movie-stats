@@ -652,3 +652,16 @@ def get_movie_list_membership(movie_id: int, user_id: int) -> list[int]:
             (user_id, movie_id),
         ).fetchall()
         return [r["id"] for r in rows]
+
+
+def get_library_ids_for_tmdb_ids(tmdb_ids: list[int]) -> dict[int, int]:
+    """Return {tmdb_id: local_movie_id} for any of the given tmdb_ids present in the library."""
+    if not tmdb_ids:
+        return {}
+    with get_db() as conn:
+        placeholders = ",".join("?" * len(tmdb_ids))
+        rows = conn.execute(
+            f"SELECT tmdb_id, id FROM movies WHERE tmdb_id IN ({placeholders})",
+            tmdb_ids,
+        ).fetchall()
+        return {r["tmdb_id"]: r["id"] for r in rows}

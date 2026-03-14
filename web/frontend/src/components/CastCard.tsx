@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import type { CastCrewMember } from '../lib/api'
 
 interface Props {
@@ -32,10 +33,10 @@ export default function CastCard({ person }: Props) {
   const label = person.role === 'cast' ? person.character_name : person.job
   const hasPhoto = !!person.profile_path
 
-  return (
-    <div className="flex-shrink-0 w-28 text-center">
+  const cardContent = (
+    <div className="flex-shrink-0 w-28 text-center group cursor-pointer">
       {/* Avatar */}
-      <div className="mx-auto w-20 h-20 rounded-full overflow-hidden border-2 border-slate-300 dark:border-slate-700 mb-2">
+      <div className="mx-auto w-20 h-20 rounded-full overflow-hidden border-2 border-slate-300 dark:border-slate-700 mb-2 group-hover:border-brand-500 transition-colors">
         {hasPhoto ? (
           <img
             src={person.profile_path}
@@ -61,7 +62,7 @@ export default function CastCard({ person }: Props) {
         )}
       </div>
 
-      <p className="text-xs font-semibold text-slate-200 leading-tight line-clamp-2">
+      <p className="text-xs font-semibold text-slate-200 leading-tight line-clamp-2 group-hover:text-brand-400 transition-colors">
         {person.name}
       </p>
       {label && (
@@ -69,4 +70,13 @@ export default function CastCard({ person }: Props) {
       )}
     </div>
   )
+
+  if (person.tmdb_person_id) {
+    return (
+      <Link to={`/person/${person.tmdb_person_id}`}>
+        {cardContent}
+      </Link>
+    )
+  }
+  return cardContent
 }

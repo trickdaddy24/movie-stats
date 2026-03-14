@@ -402,3 +402,40 @@ export interface StatsData {
 
 export const getStats = () =>
   api.get<StatsData>('/stats').then((r) => r.data)
+
+// ---------------------------------------------------------------------------
+// Person Detail
+// ---------------------------------------------------------------------------
+
+export interface FilmographyCredit {
+  tmdb_id: number
+  title: string
+  release_date?: string
+  poster_url?: string
+  rating?: number
+  vote_count?: number
+  character?: string
+  job?: string
+  department?: string
+  in_library: boolean
+  library_id?: number
+}
+
+export interface PersonDetail {
+  tmdb_person_id: number
+  name: string
+  biography?: string
+  birthday?: string
+  deathday?: string
+  place_of_birth?: string
+  profile_url?: string
+  known_for_department?: string
+  gender?: number
+  imdb_id?: string
+  cast_credits: FilmographyCredit[]
+  crew_credits: FilmographyCredit[]
+}
+
+export function getPerson(tmdbPersonId: number): Promise<PersonDetail> {
+  return api.get(`/person/${tmdbPersonId}`).then((r) => r.data)
+}

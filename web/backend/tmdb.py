@@ -206,3 +206,74 @@ def get_by_imdb_id(imdb_id: str) -> Optional[dict]:
     except Exception:
         pass
     return None
+
+
+def get_person(person_id: int) -> dict:
+    """Fetch person details and combined credits (movies only)."""
+    data = _get(
+        f"/person/{person_id}",
+        {"append_to_response": "combined_credits"}
+    )
+
+    cast_credits = []
+    for c in data.get("combined_credits", {}).get("cast", []):
+        if c.get("media_type") != "movie":
+            continue
+        if not c.get("release_date") and not c.get("poster_path"):
+            continue
+        cast_credits.append({
+            "tmdb_id": c.get("id"),
+            "title": c.get("title", ""),
+            "release_date": c.get("release_date"),
+            "poster_url": image_url(c.get("poster_path", ""), SIZE_POSTER),
+            "rating": c.get("vote_average"),
+            "vote_count": c.get("vote_count"),
+            "character": c.get("character"),
+        })
+
+    cast_credits.sort(
+        key=lambda x: x.get("release_date") or "0000-00-00",
+        reverse=True
+    )
+
+    crew_credits = []
+    seen_crew = set()
+    for c in data.get("combined_credits", {}).get("crew", []):
+        if c.get("media_type") != "movie":
+            continue
+        if not c.get("release_date") and not c.get("poster_path"):
+            continue
+        key = (c.get("id"), c.get("job"))
+        if key in seen_crew:
+            continue
+        seen_crew.add(key)
+        crew_credits.append({
+            "tmdb_id": c.get("id"),
+            "title": c.get("title", ""),
+            "release_date": c.get("release_date"),
+            "poster_url": image_url(c.get("poster_path", ""), SIZE_POSTER),
+            "rating": c.get("vote_average"),
+            "vote_count": c.get("vote_count"),
+            "job": c.get("job"),
+            "department": c.get("department"),
+        })
+
+    crew_credits.sort(
+        key=lambda x: x.get("release_date") or "0000-00-00",
+        reverse=True
+    )
+
+    return {
+        "tmdb_person_id": data.get("id"),
+        "name": data.get("name", ""),
+        "biography": data.get("biography"),
+        "birthday": data.get("birthday"),
+        "deathday": data.get("deathday"),
+        "place_of_birth": data.get("place_of_birth"),
+        "profile_url": image_url(data.get("profile_path", ""), "h632"),
+        "known_for_department": data.get("known_for_department"),
+        "gender": data.get("gender"),
+        "imdb_id": data.get("imdb_id"),
+        "cast_credits": cast_credits,
+        "crew_credits": crew_credits,
+    }
