@@ -60,7 +60,7 @@ def register(request: RegisterRequest):
         )
 
     # Create JWT token
-    token = create_access_token({"sub": user["id"]})
+    token = create_access_token({"sub": str(user["id"])})
 
     return {
         "access_token": token,
@@ -88,7 +88,7 @@ def login(request: LoginRequest):
         )
 
     # Create JWT token
-    token = create_access_token({"sub": user["id"]})
+    token = create_access_token({"sub": str(user["id"])})
 
     return {
         "access_token": token,
