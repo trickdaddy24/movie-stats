@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useQueryClient } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Star, Heart, Bookmark, Loader2 } from 'lucide-react'
 import type { Movie } from '../lib/api'
 import { formatYear } from '../lib/utils'
