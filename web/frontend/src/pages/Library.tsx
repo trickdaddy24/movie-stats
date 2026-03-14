@@ -31,7 +31,7 @@ export default function Library() {
   const [searchInput, setSearchInput] = useState('')
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
   const [page, setPage] = useState(1)
-  const [sortBy, setSortBy] = useState('added_at')
+  const [sortBy, setSortBy] = useState('release_date')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [refreshing, setRefreshing] = useState(false)
   const [refreshMsg, setRefreshMsg] = useState<string | null>(null)
