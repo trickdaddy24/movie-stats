@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.6.2] - 2026-03-13
+
+### Fixed
+- **Import endpoints authentication** — All `/api/import/*` endpoints now require authentication to prevent unauthorized access and premature logout when accessing Import features
+
 ## [1.6.1] - 2026-03-12
 
 ### Fixed
