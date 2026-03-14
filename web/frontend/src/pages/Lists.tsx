@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2, Loader2, Edit2 } from 'lucide-react'
-import { getLists, createList, deleteList, renameList } from '../lib/api'
+import { getLists, createList, deleteList, updateList } from '../lib/api'
 
 export default function Lists() {
   const navigate = useNavigate()
@@ -19,6 +19,7 @@ export default function Lists() {
   const [deleting, setDeleting] = useState<number | null>(null)
   const [renamingId, setRenamingId] = useState<number | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [renameDesc, setRenameDesc] = useState('')
   const [renaming, setRenaming] = useState(false)
 
   const handleCreateList = async (e: React.FormEvent) => {
@@ -49,9 +50,10 @@ export default function Lists() {
     }
   }
 
-  const startRename = (listId: number, currentName: string) => {
+  const startRename = (listId: number, currentName: string, currentDesc: string) => {
     setRenamingId(listId)
     setRenameValue(currentName)
+    setRenameDesc(currentDesc || '')
   }
 
   const handleRenameList = async (listId: number) => {
@@ -59,10 +61,11 @@ export default function Lists() {
 
     setRenaming(true)
     try {
-      await renameList(listId, renameValue)
+      await updateList(listId, renameValue, renameDesc || undefined)
       queryClient.invalidateQueries({ queryKey: ['lists'] })
       setRenamingId(null)
       setRenameValue('')
+      setRenameDesc('')
     } finally {
       setRenaming(false)
     }
@@ -205,33 +208,61 @@ export default function Lists() {
               {customLists.map((list) => (
                 <div key={list.id}>
                   {renamingId === list.id ? (
-                    <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                        placeholder="List name"
-                        autoFocus
-                        className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400"
-                        disabled={renaming}
-                      />
-                      <button
-                        onClick={() => handleRenameList(list.id)}
-                        disabled={!renameValue.trim() || renaming}
-                        className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 transition-colors flex-shrink-0"
-                      >
-                        {renaming ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setRenamingId(null)
-                          setRenameValue('')
-                        }}
-                        disabled={renaming}
-                        className="rounded-lg bg-slate-200 dark:bg-slate-800 px-3 py-2 text-sm font-medium text-slate-900 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors flex-shrink-0"
-                      >
-                        Cancel
-                      </button>
+                    <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-900 dark:text-white mb-1">
+                          List Name
+                        </label>
+                        <input
+                          type="text"
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          placeholder="List name"
+                          autoFocus
+                          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400"
+                          disabled={renaming}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-900 dark:text-white mb-1">
+                          Description (optional)
+                        </label>
+                        <textarea
+                          value={renameDesc}
+                          onChange={(e) => setRenameDesc(e.target.value)}
+                          placeholder="Add a description..."
+                          rows={2}
+                          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400"
+                          disabled={renaming}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleRenameList(list.id)}
+                          disabled={!renameValue.trim() || renaming}
+                          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 transition-colors"
+                        >
+                          {renaming ? (
+                            <span className="flex items-center gap-2">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Saving...
+                            </span>
+                          ) : (
+                            'Save'
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setRenamingId(null)
+                            setRenameValue('')
+                            setRenameDesc('')
+                          }}
+                          disabled={renaming}
+                          className="rounded-lg bg-slate-200 dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-900 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 flex items-center justify-between hover:border-brand-500 hover:shadow-lg hover:shadow-brand-500/10 transition-all">
@@ -253,9 +284,9 @@ export default function Lists() {
                       </button>
                       <div className="flex gap-1 flex-shrink-0">
                         <button
-                          onClick={() => startRename(list.id, list.name)}
+                          onClick={() => startRename(list.id, list.name, list.description || '')}
                           className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors"
-                          title="Rename list"
+                          title="Edit list"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>

@@ -17,8 +17,9 @@ class AddMovieRequest(BaseModel):
     movie_id: int
 
 
-class RenameListRequest(BaseModel):
+class UpdateListRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = None
 
 
 class ListResponse(BaseModel):
@@ -124,12 +125,12 @@ def get_list(
 
 
 @router.patch("/{list_id}")
-def rename_list(
+def update_list(
     list_id: int,
-    request: RenameListRequest,
+    request: UpdateListRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    """Rename a list."""
+    """Update a list's name and/or description."""
     with db.get_db() as conn:
         list_row = conn.execute(
             "SELECT id, user_id FROM user_lists WHERE id=? AND user_id=?",
@@ -143,8 +144,8 @@ def rename_list(
             )
 
         conn.execute(
-            "UPDATE user_lists SET name=? WHERE id=?",
-            (request.name, list_id),
+            "UPDATE user_lists SET name=?, description=? WHERE id=?",
+            (request.name, request.description, list_id),
         )
 
     return {"success": True}

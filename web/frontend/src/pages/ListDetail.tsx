@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, Loader2, Trash2, Download, Edit2 } from 'lucide-react'
-import { getList, removeFromList, renameList, deleteList } from '../lib/api'
+import { getList, removeFromList, updateList, deleteList } from '../lib/api'
 import { formatYear } from '../lib/utils'
 import type { MovieInList } from '../lib/api'
 
@@ -13,6 +13,7 @@ export default function ListDetail() {
   const [removing, setRemoving] = useState<number | null>(null)
   const [isRenaming, setIsRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState('')
+  const [renameDesc, setRenameDesc] = useState('')
   const [renaming, setRenaming] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -74,15 +75,16 @@ export default function ListDetail() {
     }
   }
 
-  async function handleRenameList(newName: string) {
-    if (!listId || !newName.trim()) return
+  async function handleRenameList() {
+    if (!listId || !renameValue.trim()) return
     setRenaming(true)
     try {
-      await renameList(Number(listId), newName)
+      await updateList(Number(listId), renameValue, renameDesc || undefined)
       queryClient.invalidateQueries({ queryKey: ['list', listId] })
       queryClient.invalidateQueries({ queryKey: ['lists'] })
       setIsRenaming(false)
       setRenameValue('')
+      setRenameDesc('')
     } finally {
       setRenaming(false)
     }
@@ -138,33 +140,61 @@ export default function ListDetail() {
 
         <div className="mb-8">
           {isRenaming ? (
-            <div className="flex items-center gap-2 mb-6">
-              <input
-                type="text"
-                value={renameValue}
-                onChange={(e) => setRenameValue(e.target.value)}
-                placeholder="List name"
-                autoFocus
-                className="flex-1 max-w-md rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400"
-                disabled={renaming}
-              />
-              <button
-                onClick={() => handleRenameList(renameValue)}
-                disabled={!renameValue.trim() || renaming}
-                className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 transition-colors"
-              >
-                {renaming ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
-              </button>
-              <button
-                onClick={() => {
-                  setIsRenaming(false)
-                  setRenameValue('')
-                }}
-                disabled={renaming}
-                className="rounded-lg bg-slate-200 dark:bg-slate-800 px-3 py-2 text-sm font-medium text-slate-900 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
-              >
-                Cancel
-              </button>
+            <div className="mb-6 rounded-lg bg-slate-50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 space-y-3 max-w-2xl">
+              <div>
+                <label className="block text-sm font-medium text-slate-900 dark:text-white mb-1">
+                  List Name
+                </label>
+                <input
+                  type="text"
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  placeholder="List name"
+                  autoFocus
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400"
+                  disabled={renaming}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-900 dark:text-white mb-1">
+                  Description (optional)
+                </label>
+                <textarea
+                  value={renameDesc}
+                  onChange={(e) => setRenameDesc(e.target.value)}
+                  placeholder="Add a description..."
+                  rows={2}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400"
+                  disabled={renaming}
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleRenameList}
+                  disabled={!renameValue.trim() || renaming}
+                  className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 transition-colors"
+                >
+                  {renaming ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </span>
+                  ) : (
+                    'Save'
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setIsRenaming(false)
+                    setRenameValue('')
+                    setRenameDesc('')
+                  }}
+                  disabled={renaming}
+                  className="rounded-lg bg-slate-200 dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-900 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex items-center justify-between mb-2">
@@ -186,12 +216,13 @@ export default function ListDetail() {
                       onClick={() => {
                         setIsRenaming(true)
                         setRenameValue(list.name)
+                        setRenameDesc(list.description || '')
                       }}
                       className="flex items-center gap-2 px-3 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 text-sm font-medium rounded-lg transition-colors"
-                      title="Rename list"
+                      title="Edit list"
                     >
                       <Edit2 className="w-4 h-4" />
-                      Rename
+                      Edit
                     </button>
                     <button
                       onClick={handleDeleteList}
