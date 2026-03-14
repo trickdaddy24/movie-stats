@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.6.6] - 2026-03-13
+
+### Added
+- **Custom lists dropdown** — + button on each movie opens dropdown with checkboxes for custom lists
+- Add/remove movies from multiple custom lists at once
+
 ## [1.6.5] - 2026-03-13
 
 ### Added
