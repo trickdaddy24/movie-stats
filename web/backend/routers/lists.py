@@ -17,6 +17,10 @@ class AddMovieRequest(BaseModel):
     movie_id: int
 
 
+class RenameListRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+
+
 class ListResponse(BaseModel):
     id: int
     user_id: int
@@ -117,6 +121,33 @@ def get_list(
             for m in movies
         ],
     }
+
+
+@router.patch("/{list_id}")
+def rename_list(
+    list_id: int,
+    request: RenameListRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """Rename a list."""
+    with db.get_db() as conn:
+        list_row = conn.execute(
+            "SELECT id, user_id FROM user_lists WHERE id=? AND user_id=?",
+            (list_id, current_user["id"]),
+        ).fetchone()
+
+        if not list_row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="List not found",
+            )
+
+        conn.execute(
+            "UPDATE user_lists SET name=? WHERE id=?",
+            (request.name, list_id),
+        )
+
+    return {"success": True}
 
 
 @router.delete("/{list_id}")

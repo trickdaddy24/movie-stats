@@ -357,6 +357,10 @@ export function getList(listId: number): Promise<{ list: UserList; movies: Movie
   return api.get(`/lists/${listId}`).then((r) => r.data)
 }
 
+export function renameList(listId: number, name: string): Promise<{ success: boolean }> {
+  return api.patch(`/lists/${listId}`, { name }).then((r) => r.data)
+}
+
 export function deleteList(listId: number): Promise<{ success: boolean }> {
   return api.delete(`/lists/${listId}`).then((r) => r.data)
 }

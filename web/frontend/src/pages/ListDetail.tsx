@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, Loader2, Trash2, Download } from 'lucide-react'
-import { getList, removeFromList } from '../lib/api'
+import { ChevronLeft, Loader2, Trash2, Download, Edit2 } from 'lucide-react'
+import { getList, removeFromList, renameList, deleteList } from '../lib/api'
 import { formatYear } from '../lib/utils'
 import type { MovieInList } from '../lib/api'
 
@@ -11,6 +11,10 @@ export default function ListDetail() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [removing, setRemoving] = useState<number | null>(null)
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState('')
+  const [renaming, setRenaming] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   function exportAsCSV(listName: string, movies: MovieInList[]) {
     const headers = ['Title', 'Year', 'Rating', 'Runtime (min)', 'Genres']
@@ -70,6 +74,31 @@ export default function ListDetail() {
     }
   }
 
+  async function handleRenameList(newName: string) {
+    if (!listId || !newName.trim()) return
+    setRenaming(true)
+    try {
+      await renameList(Number(listId), newName)
+      queryClient.invalidateQueries({ queryKey: ['list', listId] })
+      queryClient.invalidateQueries({ queryKey: ['lists'] })
+      setIsRenaming(false)
+      setRenameValue('')
+    } finally {
+      setRenaming(false)
+    }
+  }
+
+  async function handleDeleteList() {
+    if (!listId || !confirm('Delete this list?')) return
+    setDeleting(true)
+    try {
+      await deleteList(Number(listId))
+      navigate('/lists')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -108,37 +137,96 @@ export default function ListDetail() {
         </button>
 
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
-              {list.name}
-            </h1>
-            {movies.length > 0 && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => exportAsCSV(list.name, movies)}
-                  className="flex items-center gap-2 px-3 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 text-sm font-medium rounded-lg transition-colors"
-                  title="Export as CSV"
-                >
-                  <Download className="w-4 h-4" />
-                  CSV
-                </button>
-                <button
-                  onClick={() => exportAsJSON(list.name, movies)}
-                  className="flex items-center gap-2 px-3 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 text-sm font-medium rounded-lg transition-colors"
-                  title="Export as JSON"
-                >
-                  <Download className="w-4 h-4" />
-                  JSON
-                </button>
+          {isRenaming ? (
+            <div className="flex items-center gap-2 mb-6">
+              <input
+                type="text"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                placeholder="List name"
+                autoFocus
+                className="flex-1 max-w-md rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400"
+                disabled={renaming}
+              />
+              <button
+                onClick={() => handleRenameList(renameValue)}
+                disabled={!renameValue.trim() || renaming}
+                className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 transition-colors"
+              >
+                {renaming ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+              </button>
+              <button
+                onClick={() => {
+                  setIsRenaming(false)
+                  setRenameValue('')
+                }}
+                disabled={renaming}
+                className="rounded-lg bg-slate-200 dark:bg-slate-800 px-3 py-2 text-sm font-medium text-slate-900 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+                  {list.name}
+                </h1>
+                {list.description && (
+                  <p className="text-slate-600 dark:text-slate-400 mt-1">{list.description}</p>
+                )}
+                <p className="text-sm text-slate-500 dark:text-slate-500 mt-2">
+                  {movies.length} movie{movies.length !== 1 ? 's' : ''}
+                </p>
               </div>
-            )}
-          </div>
-          {list.description && (
-            <p className="text-slate-600 dark:text-slate-400">{list.description}</p>
+              <div className="flex gap-2 flex-shrink-0">
+                {list.list_type === 'custom' && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setIsRenaming(true)
+                        setRenameValue(list.name)
+                      }}
+                      className="flex items-center gap-2 px-3 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 text-sm font-medium rounded-lg transition-colors"
+                      title="Rename list"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                      Rename
+                    </button>
+                    <button
+                      onClick={handleDeleteList}
+                      disabled={deleting}
+                      className="flex items-center gap-2 px-3 py-2 bg-red-100 dark:bg-red-950/20 hover:bg-red-200 dark:hover:bg-red-950/40 text-red-700 dark:text-red-400 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                      title="Delete list"
+                    >
+                      {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                      Delete
+                    </button>
+                  </>
+                )}
+                {movies.length > 0 && (
+                  <>
+                    <button
+                      onClick={() => exportAsCSV(list.name, movies)}
+                      className="flex items-center gap-2 px-3 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 text-sm font-medium rounded-lg transition-colors"
+                      title="Export as CSV"
+                    >
+                      <Download className="w-4 h-4" />
+                      CSV
+                    </button>
+                    <button
+                      onClick={() => exportAsJSON(list.name, movies)}
+                      className="flex items-center gap-2 px-3 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 text-sm font-medium rounded-lg transition-colors"
+                      title="Export as JSON"
+                    >
+                      <Download className="w-4 h-4" />
+                      JSON
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
           )}
-          <p className="text-sm text-slate-500 dark:text-slate-500 mt-2">
-            {movies.length} movie{movies.length !== 1 ? 's' : ''}
-          </p>
         </div>
 
         {/* Movies grid */}
