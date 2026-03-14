@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2, Loader2 } from 'lucide-react'
 import { getLists, createList, deleteList } from '../lib/api'
 
 export default function Lists() {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data: lists, isLoading } = useQuery({
     queryKey: ['lists'],
@@ -61,7 +63,10 @@ export default function Lists() {
       <div className="max-w-4xl mx-auto p-6 space-y-8">
         {/* Favorites */}
         {favoritesList && (
-          <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-6 border border-slate-200 dark:border-slate-800">
+          <button
+            onClick={() => navigate(`/lists/${favoritesList.id}`)}
+            className="w-full text-left rounded-lg bg-slate-50 dark:bg-slate-900 p-6 border border-slate-200 dark:border-slate-800 hover:border-brand-500 hover:shadow-lg hover:shadow-brand-500/10 transition-all"
+          >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                 ❤️ Favorites
@@ -73,12 +78,15 @@ export default function Lists() {
             <p className="text-sm text-slate-600 dark:text-slate-400">
               Movies you've marked as favorites
             </p>
-          </div>
+          </button>
         )}
 
         {/* Watchlist */}
         {watchlistList && (
-          <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-6 border border-slate-200 dark:border-slate-800">
+          <button
+            onClick={() => navigate(`/lists/${watchlistList.id}`)}
+            className="w-full text-left rounded-lg bg-slate-50 dark:bg-slate-900 p-6 border border-slate-200 dark:border-slate-800 hover:border-brand-500 hover:shadow-lg hover:shadow-brand-500/10 transition-all"
+          >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                 🎬 Watchlist
@@ -90,7 +98,7 @@ export default function Lists() {
             <p className="text-sm text-slate-600 dark:text-slate-400">
               Movies you want to watch
             </p>
-          </div>
+          </button>
         )}
 
         {/* Custom Lists */}
@@ -175,10 +183,13 @@ export default function Lists() {
               {customLists.map((list) => (
                 <div
                   key={list.id}
-                  className="rounded-lg bg-slate-50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 flex items-center justify-between hover:shadow-md transition-shadow"
+                  className="rounded-lg bg-slate-50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 flex items-center justify-between hover:border-brand-500 hover:shadow-lg hover:shadow-brand-500/10 transition-all"
                 >
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-slate-900 dark:text-white">
+                  <button
+                    onClick={() => navigate(`/lists/${list.id}`)}
+                    className="flex-1 text-left"
+                  >
+                    <h4 className="font-semibold text-slate-900 dark:text-white hover:text-brand-600 dark:hover:text-brand-400 transition-colors">
                       {list.name}
                     </h4>
                     {list.description && (
@@ -189,14 +200,14 @@ export default function Lists() {
                     <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
                       {list.movie_count} movie{list.movie_count !== 1 ? 's' : ''}
                     </p>
-                  </div>
+                  </button>
                   <button
                     onClick={() => handleDeleteList(list.id)}
                     disabled={deleting === list.id}
-                    className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors disabled:opacity-50"
+                    className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors disabled:opacity-50 flex-shrink-0"
                     title="Delete list"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    {deleting === list.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                   </button>
                 </div>
               ))}

@@ -13,6 +13,7 @@ import Stats from './pages/Stats'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Lists from './pages/Lists'
+import ListDetail from './pages/ListDetail'
 import TestMatch from './pages/TestMatch'
 
 const queryClient = new QueryClient({
@@ -45,6 +46,7 @@ export default function App() {
                   <Route path="/import" element={<Import />} />
                   <Route path="/stats" element={<Stats />} />
                   <Route path="/lists" element={<Lists />} />
+                  <Route path="/lists/:listId" element={<ListDetail />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/test" element={<TestMatch />} />
                 </Route>
