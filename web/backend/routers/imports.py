@@ -6,11 +6,12 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 import database as db
+from auth_utils import get_current_user
 import fanart
 import plex as plex_client
 import scanner
@@ -325,7 +326,7 @@ class FolderPreviewBody(BaseModel):
 # ---------------------------------------------------------------------------
 
 @router.get("/progress/{job_id}")
-async def import_progress(job_id: str):
+async def import_progress(job_id: str, current_user: dict = Depends(get_current_user)):
     """SSE stream of import progress events for a given job_id."""
     if job_id not in _jobs:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -350,7 +351,7 @@ async def import_progress(job_id: str):
 # ---------------------------------------------------------------------------
 
 @router.get("/tmdb-list/{list_id}")
-def preview_tmdb_list(list_id: str):
+def preview_tmdb_list(list_id: str, current_user: dict = Depends(get_current_user)):
     """Preview a TMDB list — returns name, description, total and first 5 movies."""
     clean_id = _strip_tmdb_list_url(list_id)
     try:
@@ -379,7 +380,7 @@ def preview_tmdb_list(list_id: str):
 
 
 @router.post("/tmdb-list/{list_id}/start")
-def start_tmdb_list_import(list_id: str):
+def start_tmdb_list_import(list_id: str, current_user: dict = Depends(get_current_user)):
     """Start a streaming import from a TMDB list. Returns job_id."""
     _require_tmdb_key()
     clean_id = _strip_tmdb_list_url(list_id)
@@ -416,6 +417,7 @@ def start_tmdb_list_import(list_id: str):
 def preview_trakt(
     username: str = Query(...),
     list_slug: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user),
 ):
     """Preview a Trakt user list or watchlist."""
     if not trakt_client.get_client_id():
@@ -439,7 +441,7 @@ def preview_trakt(
 
 
 @router.post("/trakt/start")
-def start_trakt_import(body: TraktImportBody):
+def start_trakt_import(body: TraktImportBody, current_user: dict = Depends(get_current_user)):
     """Start a streaming import from Trakt. Returns job_id."""
     _require_tmdb_key()
     if not trakt_client.get_client_id():
@@ -473,7 +475,7 @@ def start_trakt_import(body: TraktImportBody):
 # ---------------------------------------------------------------------------
 
 @router.get("/plex/saved")
-def get_plex_saved():
+def get_plex_saved(current_user: dict = Depends(get_current_user)):
     """
     Return Plex libraries using PLEX_URL + PLEX_TOKEN from .env.
     Returns {configured: bool, plex_url: str, libraries: [...]}
@@ -496,7 +498,7 @@ def get_plex_saved():
 
 
 @router.post("/plex/libraries")
-def get_plex_libraries(body: PlexLibrariesBody):
+def get_plex_libraries(body: PlexLibrariesBody, current_user: dict = Depends(get_current_user)):
     """Connect to Plex and return available movie library sections."""
     if not plex_client.validate_connection(body.plex_url, body.plex_token):
         raise HTTPException(status_code=502, detail="Cannot connect to Plex server. Check URL and token.")
@@ -510,7 +512,7 @@ def get_plex_libraries(body: PlexLibrariesBody):
 
 
 @router.post("/plex/preview")
-def preview_plex(body: PlexPreviewBody):
+def preview_plex(body: PlexPreviewBody, current_user: dict = Depends(get_current_user)):
     """Preview movies in a Plex library section."""
     import os
     plex_token = body.plex_token or os.getenv("PLEX_TOKEN", "").strip()
@@ -533,7 +535,7 @@ def preview_plex(body: PlexPreviewBody):
 
 
 @router.post("/plex/start")
-def start_plex_import(body: PlexStartBody):
+def start_plex_import(body: PlexStartBody, current_user: dict = Depends(get_current_user)):
     """Start a streaming import from a Plex library. Returns job_id immediately."""
     import os
     _require_tmdb_key()
@@ -557,7 +559,7 @@ def start_plex_import(body: PlexStartBody):
 # ---------------------------------------------------------------------------
 
 @router.post("/cancel/{job_id}")
-def cancel_import(job_id: str):
+def cancel_import(job_id: str, current_user: dict = Depends(get_current_user)):
     """Signal a running import job to stop after the current movie."""
     if job_id not in _jobs:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -570,7 +572,7 @@ def cancel_import(job_id: str):
 # ---------------------------------------------------------------------------
 
 @router.post("/folder/preview")
-def preview_folder(body: FolderPreviewBody):
+def preview_folder(body: FolderPreviewBody, current_user: dict = Depends(get_current_user)):
     """Scan a local folder and return parsed movie list (no TMDB lookup)."""
     try:
         parsed = scanner.scan_folder(body.folder_path, body.recursive)
@@ -585,7 +587,7 @@ def preview_folder(body: FolderPreviewBody):
 
 
 @router.post("/folder/start")
-def start_folder_import(body: FolderStartBody):
+def start_folder_import(body: FolderStartBody, current_user: dict = Depends(get_current_user)):
     """Scan folder, start streaming import. TMDB resolution happens in the background thread."""
     _require_tmdb_key()
     try:
@@ -612,6 +614,6 @@ def start_folder_import(body: FolderStartBody):
 # ---------------------------------------------------------------------------
 
 @router.get("/sessions")
-def get_sessions():
+def get_sessions(current_user: dict = Depends(get_current_user)):
     """Return recent import sessions (last 20)."""
     return db.get_import_sessions(limit=20)
