@@ -339,6 +339,7 @@ export interface MovieInList {
   tmdb_id: number
   title: string
   rating?: number
+  content_rating?: string
   release_date?: string
   runtime?: number
   poster_url?: string

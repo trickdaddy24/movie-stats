@@ -26,6 +26,15 @@ export function formatRuntime(mins: number | undefined | null): string {
   return `${h}h ${m}m`
 }
 
+export function formatRuntimeLong(mins: number | undefined | null): string {
+  if (!mins) return ''
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  if (h === 0) return `${m}mins`
+  if (m === 0) return `${h}hrs`
+  return `${h}hrs ${m}mins`
+}
+
 export function getRating(r: number | undefined | null): string {
   if (!r) return 'N/A'
   return `${r.toFixed(1)} / 10`

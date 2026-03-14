@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, Loader2, Trash2, Download, Edit2 } from 'lucide-react'
 import { getList, removeFromList, updateList, deleteList } from '../lib/api'
-import { formatYear } from '../lib/utils'
+import { formatYear, formatRuntimeLong } from '../lib/utils'
 import type { MovieInList } from '../lib/api'
 
 export default function ListDetail() {
@@ -18,13 +18,14 @@ export default function ListDetail() {
   const [deleting, setDeleting] = useState(false)
 
   function exportAsCSV(listName: string, movies: MovieInList[]) {
-    const headers = ['Title', 'Year', 'Rating', 'Runtime (min)', 'Genres']
+    const headers = ['Title', 'Year', 'Rating', 'Content Rating', 'Runtime', 'Genres']
     const rows = movies.map((m) => [
       `"${m.title.replace(/"/g, '""')}"`,
       formatYear(m.release_date) || '',
       m.rating ? m.rating.toFixed(1) : '',
-      m.runtime || '',
-      m.genres?.join(', ') || '',
+      m.content_rating || '',
+      formatRuntimeLong(m.runtime) || '',
+      `"${m.genres?.join(', ') || ''}"`,
     ])
 
     const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n')
@@ -44,7 +45,8 @@ export default function ListDetail() {
         title: m.title,
         year: formatYear(m.release_date),
         rating: m.rating,
-        runtime: m.runtime,
+        contentRating: m.content_rating,
+        runtime: formatRuntimeLong(m.runtime),
         genres: m.genres,
         releaseDate: m.release_date,
       })),

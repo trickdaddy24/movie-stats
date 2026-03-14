@@ -37,6 +37,7 @@ class MovieInListResponse(BaseModel):
     tmdb_id: int
     title: str
     rating: Optional[float]
+    content_rating: Optional[str]
     release_date: Optional[str]
     runtime: Optional[int]
     poster_url: Optional[str]
@@ -112,6 +113,7 @@ def get_list(
                         "tmdb_id",
                         "title",
                         "rating",
+                        "content_rating",
                         "release_date",
                         "runtime",
                         "poster_url",
