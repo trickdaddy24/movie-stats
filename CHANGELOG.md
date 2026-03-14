@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.6.8] - 2026-03-13
+
+### Added
+- **Export lists as CSV** — Download Favorites, Watchlist, or custom lists as spreadsheet-compatible CSV with title, year, rating, runtime, genres
+- **Export lists as JSON** — Download lists as formatted JSON (indent=5) with full details including export date and movie count
+
 ## [1.6.7] - 2026-03-13
 
 ### Added
