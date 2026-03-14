@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.6.4] - 2026-03-13
+
+### Added
+- **Quick-action list buttons on MovieCard** — Add/remove movies to Favorites (❤️) and Watchlist (🎬) directly from Library view
+- Visual feedback: buttons highlight in color when movie is in list, show loading state during action
+
 ## [1.6.3] - 2026-03-13
 
 ### Fixed
