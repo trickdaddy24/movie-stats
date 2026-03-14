@@ -1,15 +1,57 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, Loader2, Trash2 } from 'lucide-react'
+import { ChevronLeft, Loader2, Trash2, Download } from 'lucide-react'
 import { getList, removeFromList } from '../lib/api'
 import { formatYear } from '../lib/utils'
+import type { MovieInList } from '../lib/api'
 
 export default function ListDetail() {
   const { listId } = useParams<{ listId: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [removing, setRemoving] = useState<number | null>(null)
+
+  function exportAsCSV(listName: string, movies: MovieInList[]) {
+    const headers = ['Title', 'Year', 'Rating', 'Runtime (min)', 'Genres']
+    const rows = movies.map((m) => [
+      `"${m.title.replace(/"/g, '""')}"`,
+      formatYear(m.release_date) || '',
+      m.rating ? m.rating.toFixed(1) : '',
+      m.runtime || '',
+      m.genres?.join(', ') || '',
+    ])
+
+    const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `${listName.replace(/\s+/g, '_')}.csv`
+    link.click()
+  }
+
+  function exportAsJSON(listName: string, movies: MovieInList[]) {
+    const data = {
+      listName,
+      exportDate: new Date().toISOString(),
+      movieCount: movies.length,
+      movies: movies.map((m) => ({
+        title: m.title,
+        year: formatYear(m.release_date),
+        rating: m.rating,
+        runtime: m.runtime,
+        genres: m.genres,
+        releaseDate: m.release_date,
+      })),
+    }
+
+    const json = JSON.stringify(data, null, 5)
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `${listName.replace(/\s+/g, '_')}.json`
+    link.click()
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ['list', listId],
@@ -66,9 +108,31 @@ export default function ListDetail() {
         </button>
 
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-            {list.name}
-          </h1>
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+              {list.name}
+            </h1>
+            {movies.length > 0 && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => exportAsCSV(list.name, movies)}
+                  className="flex items-center gap-2 px-3 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 text-sm font-medium rounded-lg transition-colors"
+                  title="Export as CSV"
+                >
+                  <Download className="w-4 h-4" />
+                  CSV
+                </button>
+                <button
+                  onClick={() => exportAsJSON(list.name, movies)}
+                  className="flex items-center gap-2 px-3 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 text-sm font-medium rounded-lg transition-colors"
+                  title="Export as JSON"
+                >
+                  <Download className="w-4 h-4" />
+                  JSON
+                </button>
+              </div>
+            )}
+          </div>
           {list.description && (
             <p className="text-slate-600 dark:text-slate-400">{list.description}</p>
           )}
