@@ -39,6 +39,57 @@ export default function Settings() {
       {saveMut.isSuccess && (
         <p className="text-sm text-green-400">✓ Saved successfully</p>
       )}
+
+      {/* About Section */}
+      <div className="border-t border-slate-800 pt-8 mt-8">
+        <h2 className="text-lg font-semibold text-white mb-4">About MovieStats</h2>
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm text-slate-300">
+              A personal movie library powered by <strong>TMDB</strong> and <strong>fanart.tv</strong> — search any film, save it to your local collection, and explore rich metadata, HD artwork, cast, crew, and more.
+            </p>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Version</p>
+            <p className="text-sm text-slate-300">v1.7.0</p>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Tech Stack</p>
+            <div className="space-y-1 text-sm text-slate-300">
+              <p><span className="text-slate-500">Backend:</span> Python 3.10+, FastAPI, SQLite</p>
+              <p><span className="text-slate-500">Frontend:</span> React 18, Vite, TypeScript, Tailwind CSS</p>
+              <p><span className="text-slate-500">Data:</span> TMDB API v3, fanart.tv API v3</p>
+              <p><span className="text-slate-500">State:</span> TanStack Query (React Query), React Router</p>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Links</p>
+            <div className="flex gap-3">
+              <a
+                href="https://github.com/trickdaddy24/movie-stats"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm text-brand-400 hover:text-brand-300 transition-colors"
+              >
+                GitHub
+                <ExternalLink className="w-3 h-3" />
+              </a>
+              <a
+                href="https://github.com/trickdaddy24/movie-stats/blob/main/LICENSE"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm text-brand-400 hover:text-brand-300 transition-colors"
+              >
+                MIT License
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
