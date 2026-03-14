@@ -1,12 +1,12 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Film, Library, Upload, Settings, FlaskConical, PlusCircle, Sun, Moon, BarChart2, LogOut, ListChecks } from 'lucide-react'
+import { Film, Library, Upload, Settings, FlaskConical, PlusCircle, Sun, Moon, BarChart2, LogOut, ListChecks, LayoutDashboard } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { getKeyStatus } from '../lib/api'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 
-const VERSION = '1.7.0'
+const VERSION = '1.7.1'
 
 function KeyStatusDot() {
   const { data: keys } = useQuery({ queryKey: ['settings-keys'], queryFn: getKeyStatus })
@@ -39,6 +39,9 @@ export default function Layout() {
 
         {/* Nav links */}
         <nav className="flex-1 px-3 py-4 space-y-1">
+          <NavLink to="/dashboard" className={NAV_LINK_CLASS}>
+            <LayoutDashboard className="w-4 h-4" /> Dashboard
+          </NavLink>
           <NavLink to="/library" className={NAV_LINK_CLASS}>
             <Library className="w-4 h-4" /> Library
           </NavLink>

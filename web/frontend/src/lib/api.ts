@@ -121,6 +121,10 @@ export function searchTMDB(q: string, page = 1): Promise<TMDBSearchResponse> {
   return api.get('/search', { params: { q, page } }).then((r) => r.data)
 }
 
+export function getUpcoming(page = 1): Promise<TMDBSearchResponse> {
+  return api.get('/upcoming', { params: { page } }).then((r) => r.data)
+}
+
 export function getTMDBMovie(tmdbId: number): Promise<Movie & { in_library: boolean; library_id?: number; fanart?: ArtworkItem[] }> {
   return api.get(`/search/tmdb/${tmdbId}`).then((r) => r.data)
 }

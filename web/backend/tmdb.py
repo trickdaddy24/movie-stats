@@ -208,6 +208,31 @@ def get_by_imdb_id(imdb_id: str) -> Optional[dict]:
     return None
 
 
+def get_upcoming_movies(page: int = 1) -> dict:
+    """Fetch upcoming movies from TMDB."""
+    data = _get("/movie/upcoming", {"page": page})
+    results = []
+    for m in data.get("results", []):
+        results.append({
+            "tmdb_id": m.get("id"),
+            "title": m.get("title", ""),
+            "original_title": m.get("original_title"),
+            "overview": m.get("overview"),
+            "release_date": m.get("release_date"),
+            "rating": m.get("vote_average"),
+            "vote_count": m.get("vote_count"),
+            "poster_url": image_url(m.get("poster_path", ""), SIZE_POSTER),
+            "backdrop_url": image_url(m.get("backdrop_path", ""), SIZE_BACKDROP),
+            "genre_ids": m.get("genre_ids", []),
+        })
+    return {
+        "results": results,
+        "page": data.get("page", 1),
+        "total_pages": data.get("total_pages", 1),
+        "total_results": data.get("total_results", 0),
+    }
+
+
 def get_person(person_id: int) -> dict:
     """Fetch person details and combined credits (movies only)."""
     data = _get(

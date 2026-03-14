@@ -4,6 +4,7 @@ import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider } from './context/AuthContext'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
+import Dashboard from './pages/Dashboard'
 import Library from './pages/Library'
 import Search from './pages/Search'
 import MovieDetail from './pages/MovieDetail'
@@ -40,7 +41,8 @@ export default function App() {
               {/* Protected routes */}
               <Route element={<ProtectedRoute />}>
                 <Route element={<Layout />}>
-                  <Route path="/" element={<Navigate to="/library" replace />} />
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/library" element={<Library />} />
                   <Route path="/search" element={<Search />} />
                   <Route path="/movies/:id" element={<MovieDetail />} />

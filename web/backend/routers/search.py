@@ -8,6 +8,18 @@ import database as db
 router = APIRouter()
 
 
+@router.get("/upcoming")
+def get_upcoming(page: int = Query(1, ge=1)):
+    """Get upcoming movies from TMDB."""
+    try:
+        results = tmdb.get_upcoming_movies(page)
+    except TMDBRateLimitError as e:
+        raise HTTPException(status_code=429, detail=str(e), headers={"Retry-After": str(e.retry_after)})
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"TMDB error: {e}")
+    return results
+
+
 @router.get("/search")
 def search_tmdb(q: str = Query(..., min_length=1), page: int = Query(1, ge=1)):
     try:

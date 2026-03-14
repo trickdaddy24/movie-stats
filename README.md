@@ -1,6 +1,6 @@
 # MovieStats
 
-![Version](https://img.shields.io/badge/version-1.7.0-6366f1?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.7.1-6366f1?style=flat-square)
 ![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)
@@ -310,7 +310,7 @@ FANART_API_KEY=your_fanart_key_here
 - [ ] Watched / watchlist status tracking
 - [ ] User ratings and personal notes
 - [x] Trakt.tv sync / bulk import
-- [ ] Person detail page (full filmography)
+- [x] Person detail page (full filmography)
 - [ ] Collection and playlist grouping
 - [x] Bulk import from TMDB Lists, Trakt, Plex, local folders
 - [x] Export to JSON and CSV

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1] - 2026-03-14
+
+### Added
+- **Dashboard landing page** — New home page with personalized greeting, overview stats (Total Movies, Watch Time, Avg Rating, Plex Count), upcoming movies grid from TMDB, quick links to lists, and top 5 highest-rated movies
+- **Dashboard navigation** — "Dashboard" tab as first item in sidebar; app now opens to dashboard instead of library
+- **Upcoming movies section** — Browse upcoming movies from TMDB with quick "Add" buttons to save to library
+
 ## [1.7.0] - 2026-03-13
 
 ### Added

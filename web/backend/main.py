@@ -15,7 +15,7 @@ from routers.lists import router as lists_router
 from routers.test_match import router as test_router
 from routers.person import router as person_router
 
-app = FastAPI(title="Movie Stats API", version="1.7.0")
+app = FastAPI(title="Movie Stats API", version="1.7.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -55,7 +55,7 @@ def startup():
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "version": "1.7.0"}
+    return {"status": "ok", "version": "1.7.1"}
 
 
 if __name__ == "__main__":
