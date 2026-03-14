@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Star, Heart, Bookmark, Loader2 } from 'lucide-react'
+import { Star, Heart, Bookmark, Plus, Loader2 } from 'lucide-react'
 import type { Movie } from '../lib/api'
 import { formatYear } from '../lib/utils'
 import { getLists, addToList, removeFromList, getMovieLists } from '../lib/api'
@@ -19,6 +19,10 @@ export default function MovieCard({ movie }: Props) {
   const [inFav, setInFav] = useState(false)
   const [inWatch, setInWatch] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
+  const [customLists, setCustomLists] = useState<{ id: number; name: string }[]>([])
+  const [movieListIds, setMovieListIds] = useState<number[]>([])
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     ;(async () => {
@@ -29,6 +33,7 @@ export default function MovieCard({ movie }: Props) {
         if (fav) setFavId(fav.id)
         if (watch) setWatchlistId(watch.id)
         setLists(l)
+        setCustomLists(l.filter((x) => x.list_type === 'custom').map((x) => ({ id: x.id, name: x.name })))
       } catch (err) {
         console.error('Failed to load lists:', err)
       }
@@ -42,6 +47,7 @@ export default function MovieCard({ movie }: Props) {
         const result = await getMovieLists(movie.id)
         setInFav(result.list_ids.includes(favId))
         setInWatch(result.list_ids.includes(watchlistId))
+        setMovieListIds(result.list_ids)
       } catch (err) {
         console.error('Failed to check lists:', err)
       }
@@ -77,6 +83,22 @@ export default function MovieCard({ movie }: Props) {
       } else {
         await addToList(watchlistId, movie.id)
         setInWatch(true)
+      }
+      queryClient.invalidateQueries({ queryKey: ['movies'] })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleToggleCustomList(listId: number) {
+    setLoading(true)
+    try {
+      if (movieListIds.includes(listId)) {
+        await removeFromList(listId, movie.id)
+        setMovieListIds(movieListIds.filter((id) => id !== listId))
+      } else {
+        await addToList(listId, movie.id)
+        setMovieListIds([...movieListIds, listId])
       }
       queryClient.invalidateQueries({ queryKey: ['movies'] })
     } finally {
@@ -192,6 +214,44 @@ export default function MovieCard({ movie }: Props) {
           >
             {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bookmark className="w-3 h-3" />}
           </button>
+
+          {/* Custom lists dropdown */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowMenu(!showMenu)
+              }}
+              disabled={loading || customLists.length === 0}
+              title="Add to custom lists"
+              className="px-2 py-1.5 rounded text-xs font-medium bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 transition-colors disabled:opacity-50 flex items-center justify-center"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+
+            {showMenu && customLists.length > 0 && (
+              <div className="absolute bottom-full mb-2 right-0 bg-slate-800 dark:bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-50 min-w-48">
+                {customLists.map((list) => (
+                  <button
+                    key={list.id}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleToggleCustomList(list.id)
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-700 transition-colors flex items-center gap-2 first:rounded-t-lg last:rounded-b-lg"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={movieListIds.includes(list.id)}
+                      onChange={() => {}}
+                      className="w-4 h-4"
+                    />
+                    <span className="flex-1">{list.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -91,9 +91,11 @@ def get_list(
             )
 
     movies = db.get_list_movies(list_id, current_user["id"])
+    list_dict = dict(list_row)
+    list_dict["movie_count"] = len(movies)
 
     return {
-        "list": ListResponse(**dict(list_row)),
+        "list": ListResponse(**list_dict),
         "movies": [
             MovieInListResponse(
                 **{
