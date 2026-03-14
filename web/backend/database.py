@@ -81,6 +81,17 @@ def setup_db():
                 log_json TEXT DEFAULT '[]'
             );
 
+            CREATE TABLE IF NOT EXISTS radarr_sync_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_type TEXT NOT NULL,
+                tmdb_id INTEGER,
+                radarr_id INTEGER,
+                title TEXT,
+                is_upgrade INTEGER DEFAULT 0,
+                occurred_at TEXT NOT NULL,
+                raw_payload TEXT
+            );
+
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
@@ -127,6 +138,14 @@ def setup_db():
             pass
         try:
             conn.execute("ALTER TABLE import_sessions ADD COLUMN user_id INTEGER REFERENCES users(id)")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE movies ADD COLUMN radarr_id INTEGER")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE movies ADD COLUMN radarr_status TEXT")
         except Exception:
             pass
 
@@ -665,3 +684,77 @@ def get_library_ids_for_tmdb_ids(tmdb_ids: list[int]) -> dict[int, int]:
             tmdb_ids,
         ).fetchall()
         return {r["tmdb_id"]: r["id"] for r in rows}
+
+
+def add_radarr_sync_event(
+    event_type: str,
+    tmdb_id: int | None,
+    radarr_id: int | None,
+    title: str | None,
+    is_upgrade: bool,
+    raw_payload: str,
+) -> int:
+    """Insert a radarr_sync_events row and return its id."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO radarr_sync_events
+                (event_type, tmdb_id, radarr_id, title, is_upgrade, occurred_at, raw_payload)
+            VALUES
+                (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                event_type,
+                tmdb_id,
+                radarr_id,
+                title,
+                1 if is_upgrade else 0,
+                datetime.now(timezone.utc).isoformat(),
+                raw_payload,
+            ),
+        )
+        return cursor.lastrowid
+
+
+def get_radarr_sync_events(limit: int = 20) -> list[dict]:
+    """Return recent radarr_sync_events rows ordered by id DESC."""
+    with get_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, event_type, tmdb_id, radarr_id, title, is_upgrade, occurred_at
+            FROM radarr_sync_events
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def update_movie_radarr_status(
+    tmdb_id: int | None,
+    radarr_id: int | None,
+    radarr_status: str,
+) -> None:
+    """Update radarr_id and radarr_status on the movies row."""
+    with get_db() as conn:
+        if tmdb_id:
+            conn.execute(
+                "UPDATE movies SET radarr_id=?, radarr_status=? WHERE tmdb_id=?",
+                (radarr_id, radarr_status, tmdb_id),
+            )
+        elif radarr_id:
+            conn.execute(
+                "UPDATE movies SET radarr_status=? WHERE radarr_id=?",
+                (radarr_status, radarr_id),
+            )
+
+
+def get_movie_by_radarr_id(radarr_id: int) -> dict | None:
+    """Return movies row where radarr_id matches, or None."""
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT * FROM movies WHERE radarr_id=?",
+            (radarr_id,),
+        ).fetchone()
+        return dict(row) if row else None

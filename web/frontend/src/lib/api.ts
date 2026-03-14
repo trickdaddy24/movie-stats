@@ -263,6 +263,36 @@ export const startTraktImport = (username: string, listSlug?: string) =>
 export const startPlexImport = (plex_url: string, plex_token: string, section_key: string, library_name: string = '') =>
   api.post<{ job_id: string; total: number }>('/import/plex/start', { plex_url, plex_token, section_key, library_name }).then((r) => r.data)
 
+export interface RadarrSavedResult {
+  configured: boolean
+  radarr_url: string
+  error?: string
+}
+
+export interface RadarrSyncEvent {
+  id: number
+  event_type: 'MovieAdded' | 'Download' | 'MovieDelete' | 'Grab' | 'Rename' | 'Test' | string
+  tmdb_id: number | null
+  radarr_id: number | null
+  title: string | null
+  is_upgrade: number
+  occurred_at: string
+}
+
+export function getRadarrSaved(): Promise<RadarrSavedResult> {
+  return api.get('/import/radarr/saved').then((r) => r.data)
+}
+
+export function previewRadarr(radarr_url: string, api_key: string) {
+  return api.post<{ total: number; movies: ImportPreviewMovie[] }>('/import/radarr/preview', { radarr_url, api_key }).then((r) => r.data)
+}
+
+export const startRadarrImport = (radarr_url: string, api_key: string) =>
+  api.post<{ job_id: string }>('/import/radarr/start', { radarr_url, api_key }).then((r) => r.data)
+
+export const getRadarrSyncEvents = (limit = 20) =>
+  api.get<RadarrSyncEvent[]>('/radarr/sync-events', { params: { limit } }).then((r) => r.data)
+
 export const startFolderImport = (folder_path: string, recursive = true) =>
   api.post<{ job_id: string; total: number }>('/import/folder/start', { folder_path, recursive }).then((r) => r.data)
 

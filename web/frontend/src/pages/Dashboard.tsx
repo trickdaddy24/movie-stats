@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Film, Clock, Star, Server, Loader2, Plus } from 'lucide-react'
+import { Film, Clock, Star, Server, Loader2, Plus, Activity } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
-import { getStats, getUpcoming, getLists, addMovie } from '../lib/api'
+import { getStats, getUpcoming, getLists, addMovie, getRadarrSyncEvents, type RadarrSyncEvent } from '../lib/api'
 import { formatYear } from '../lib/utils'
 
 export default function Dashboard() {
@@ -17,6 +17,11 @@ export default function Dashboard() {
     queryKey: ['upcoming'],
     queryFn: () => getUpcoming(1),
     staleTime: 5 * 60 * 1000,
+  })
+  const { data: syncEvents } = useQuery({
+    queryKey: ['radarr-sync-events'],
+    queryFn: () => getRadarrSyncEvents(5),
+    staleTime: 60 * 1000,
   })
   const qc = useQueryClient()
   const addMutation = useMutation({
@@ -234,7 +239,59 @@ export default function Dashboard() {
             <p className="text-slate-500 dark:text-slate-400 text-sm">No rated movies yet</p>
           )}
         </section>
+
+        {/* Radarr Sync Activity */}
+        {syncEvents && syncEvents.length > 0 && (
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <Activity className="w-5 h-5 text-brand-500" />
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Radarr Sync Activity</h2>
+            </div>
+            <div className="space-y-2">
+              {syncEvents.map((event) => (
+                <SyncEventRow key={event.id} event={event} />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
+    </div>
+  )
+}
+
+function SyncEventRow({ event }: { event: RadarrSyncEvent }) {
+  const getEventLabel = (eventType: string, isUpgrade: number) => {
+    switch (eventType) {
+      case 'MovieAdded': return { label: 'Added to Radarr', color: 'bg-green-900/50', dot: 'bg-green-400' }
+      case 'Download': return { label: isUpgrade ? 'Quality Upgrade' : 'Downloaded', color: 'bg-blue-900/50', dot: 'bg-blue-400' }
+      case 'MovieDelete': return { label: 'Removed from Radarr', color: 'bg-red-900/50', dot: 'bg-red-400' }
+      case 'Grab': return { label: 'Grabbed (pending)', color: 'bg-yellow-900/50', dot: 'bg-yellow-400' }
+      case 'Rename': return { label: 'File renamed', color: 'bg-slate-700/50', dot: 'bg-slate-400' }
+      case 'Test': return { label: 'Webhook test', color: 'bg-slate-700/50', dot: 'bg-slate-400' }
+      default: return { label: eventType, color: 'bg-slate-700/50', dot: 'bg-slate-400' }
+    }
+  }
+
+  const formatRelativeTime = (isoString: string) => {
+    const date = new Date(isoString)
+    const now = new Date()
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+    if (seconds < 60) return 'now'
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+    return `${Math.floor(seconds / 86400)}d ago`
+  }
+
+  const eventInfo = getEventLabel(event.event_type, event.is_upgrade)
+
+  return (
+    <div className="flex items-center gap-3 p-3 rounded bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${eventInfo.dot}`} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{event.title || 'Unknown'}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{eventInfo.label}</p>
+      </div>
+      <p className="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0">{formatRelativeTime(event.occurred_at)}</p>
     </div>
   )
 }

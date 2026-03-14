@@ -14,8 +14,9 @@ from routers.auth import router as auth_router
 from routers.lists import router as lists_router
 from routers.test_match import router as test_router
 from routers.person import router as person_router
+from routers.radarr import router as radarr_router
 
-app = FastAPI(title="Movie Stats API", version="1.7.1")
+app = FastAPI(title="Movie Stats API", version="1.8.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,6 +36,7 @@ app.include_router(stats_router, prefix="/api")
 app.include_router(lists_router, prefix="/api")
 app.include_router(test_router, prefix="/api")
 app.include_router(person_router, prefix="/api")
+app.include_router(radarr_router, prefix="/api")
 
 
 @app.on_event("startup")
@@ -43,19 +45,23 @@ def startup():
     tmdb_key = os.getenv("TMDB_API_KEY", "")
     fanart_key = os.getenv("FANART_API_KEY", "")
     trakt_key = os.getenv("TRAKT_CLIENT_ID", "")
+    radarr_url = os.getenv("RADARR_URL", "")
+    radarr_key = os.getenv("RADARR_API_KEY", "")
     secret_key = os.getenv("SECRET_KEY", "")
     print("=" * 50)
     print("  Movie Stats API starting on port 8899")
     print(f"  TMDB API key set:    {'YES' if tmdb_key and tmdb_key != 'your_tmdb_api_key_here' else 'NO - set in .env'}")
     print(f"  fanart.tv key set:   {'YES' if fanart_key and fanart_key != 'your_fanart_api_key_here' else 'NO - set in .env'}")
     print(f"  Trakt client ID set: {'YES' if trakt_key and trakt_key != 'your_trakt_client_id_here' else 'NO - set in .env'}")
+    print(f"  Radarr URL set:      {'YES' if radarr_url and radarr_url != 'http://192.168.1.100:7878' else 'NO - optional'}")
+    print(f"  Radarr API key set:  {'YES' if radarr_key and radarr_key != 'your_radarr_api_key_here' else 'NO - optional'}")
     print(f"  SECRET_KEY set:      {'YES' if secret_key and secret_key != 'your-secret-key-change-in-production' else 'NO - using default (not secure)'}")
     print("=" * 50)
 
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "version": "1.7.1"}
+    return {"status": "ok", "version": "1.8.0"}
 
 
 if __name__ == "__main__":

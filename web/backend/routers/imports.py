@@ -14,6 +14,7 @@ import database as db
 from auth_utils import get_current_user
 import fanart
 import plex as plex_client
+import radarr as radarr_client
 import scanner
 import tmdb
 from tmdb import TMDBRateLimitError
@@ -248,6 +249,34 @@ def _run_plex_import(job_id: str, plex_url: str, plex_token: str, section_key: s
     _run_import(job_id, all_movies, "plex", section_key)
 
 
+def _run_radarr_import(job_id: str, radarr_url: str, api_key: str) -> None:
+    """Fetch all Radarr movies in the background thread, then run the standard import loop."""
+    try:
+        movies = radarr_client.get_all_movies(radarr_url, api_key)
+    except Exception as e:
+        log.error(f"[radarr] Failed to fetch movies: {e}")
+        _job_events[job_id].append({"type": "start", "total": 0, "source": "radarr"})
+        _job_events[job_id].append({
+            "type": "done", "imported": 0, "skipped": 0, "failed": 0,
+            "elapsed_seconds": 0, "reason": f"Radarr error: {e}",
+        })
+        _jobs[job_id]["done"] = True
+        return
+
+    importable = [
+        m | {
+            "source": "radarr",
+            "plex_library": m.get("root_folder_path"),
+        }
+        for m in movies if m.get("tmdb_id")
+    ]
+    unresolved = [m for m in movies if not m.get("tmdb_id")]
+    all_movies: list[dict] = importable + [
+        {"tmdb_id": None, "title": m.get("title", "Unknown")} for m in unresolved
+    ]
+    _run_import(job_id, all_movies, "radarr", radarr_url)
+
+
 def _run_folder_import(job_id: str, parsed: list[dict], folder_path: str) -> None:
     """Resolve filenames to TMDB IDs in the background, then run the standard import loop."""
     resolved, unresolved, api_error = _resolve_folder_movies(parsed)
@@ -309,6 +338,16 @@ class PlexStartBody(BaseModel):
     plex_token: str
     section_key: str
     library_name: str = ""
+
+
+class RadarrPreviewBody(BaseModel):
+    radarr_url: str
+    api_key: str
+
+
+class RadarrStartBody(BaseModel):
+    radarr_url: str
+    api_key: str
 
 
 class FolderStartBody(BaseModel):
@@ -547,6 +586,67 @@ def start_plex_import(body: PlexStartBody, current_user: dict = Depends(get_curr
     t = threading.Thread(
         target=_run_plex_import,
         args=(job_id, body.plex_url, plex_token, body.section_key, body.library_name),
+        daemon=True,
+    )
+    t.start()
+
+    return {"job_id": job_id}
+
+
+# ---------------------------------------------------------------------------
+# Radarr endpoints
+# ---------------------------------------------------------------------------
+
+@router.get("/radarr/saved")
+def get_radarr_saved(current_user: dict = Depends(get_current_user)):
+    """
+    Return Radarr connection status using RADARR_URL + RADARR_API_KEY from .env.
+    Returns {configured: bool, radarr_url: str, error?: str}
+    """
+    import os
+    radarr_url = os.getenv("RADARR_URL", "").strip()
+    api_key = os.getenv("RADARR_API_KEY", "").strip()
+
+    placeholders = {"your_radarr_api_key_here", ""}
+    if not radarr_url or not api_key or api_key in placeholders:
+        return {"configured": False, "radarr_url": "", "error": None}
+
+    try:
+        if not radarr_client.validate_connection(radarr_url, api_key):
+            return {"configured": True, "radarr_url": radarr_url, "error": "Cannot reach Radarr server"}
+        return {"configured": True, "radarr_url": radarr_url}
+    except Exception as e:
+        return {"configured": True, "radarr_url": radarr_url, "error": str(e)}
+
+
+@router.post("/radarr/preview")
+def preview_radarr(body: RadarrPreviewBody, current_user: dict = Depends(get_current_user)):
+    """Preview movies in Radarr library."""
+    try:
+        movies = radarr_client.get_all_movies(body.radarr_url, body.api_key)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Radarr error: {e}")
+
+    preview_movies = [
+        {"tmdb_id": m.get("tmdb_id"), "title": m.get("title"), "year": m.get("year")}
+        for m in movies[:5]
+    ]
+
+    return {
+        "total": len(movies),
+        "movies": preview_movies,
+    }
+
+
+@router.post("/radarr/start")
+def start_radarr_import(body: RadarrStartBody, current_user: dict = Depends(get_current_user)):
+    """Start a streaming import from Radarr. Returns job_id immediately."""
+    _require_tmdb_key()
+
+    job_id = _new_job("radarr")
+    t = threading.Thread(
+        target=_run_radarr_import,
+        args=(job_id, body.radarr_url, body.api_key),
         daemon=True,
     )
     t.start()

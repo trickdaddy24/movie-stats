@@ -17,6 +17,8 @@ KNOWN_KEYS = [
     {"key": "TRAKT_CLIENT_ID",  "label": "Trakt Client ID",     "required": False, "hint": "https://trakt.tv/oauth/applications"},
     {"key": "PLEX_URL",         "label": "Plex Server URL",     "required": False, "hint": "e.g. http://192.168.1.100:32400"},
     {"key": "PLEX_TOKEN",       "label": "Plex Token",          "required": False, "hint": "https://support.plex.tv/articles/204059436/"},
+    {"key": "RADARR_URL",       "label": "Radarr Server URL",   "required": False, "hint": "e.g. http://192.168.1.100:7878"},
+    {"key": "RADARR_API_KEY",   "label": "Radarr API Key",      "required": False, "hint": "Settings → General → Security in Radarr"},
 ]
 
 PLACEHOLDER_VALUES = {
@@ -25,6 +27,8 @@ PLACEHOLDER_VALUES = {
     "TRAKT_CLIENT_ID": "your_trakt_client_id_here",
     "PLEX_URL":        "http://192.168.1.100:32400",
     "PLEX_TOKEN":      "your_plex_token_here",
+    "RADARR_URL":      "http://192.168.1.100:7878",
+    "RADARR_API_KEY":  "your_radarr_api_key_here",
 }
 
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.8.0] - 2026-03-14
+
+### Added
+- **Radarr integration** — Connect your Radarr instance via Settings page (URL + API key)
+- **Radarr bulk import** — Import all movies from Radarr library in one operation via Import page with SSE progress streaming
+- **Radarr continuous sync** — Automatic updates via Radarr webhooks when movies are added, downloaded, removed, or renamed
+- **Radarr status tracking** — Track movie status in Radarr: monitored, unmonitored, downloaded, deleted
+- **Radarr activity feed** — Dashboard displays recent Radarr sync events (MovieAdded, Download, MovieDelete, etc.)
+- **Radarr webhook endpoint** — Public endpoint at `/api/radarr/webhook` for receiving Radarr events in real-time
+
 ## [1.7.1] - 2026-03-14
 
 ### Added
