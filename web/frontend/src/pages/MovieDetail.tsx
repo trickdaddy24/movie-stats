@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  ArrowLeft, Star, Clock, Calendar, Trash2, RefreshCw, ExternalLink, Loader2, X
+  ArrowLeft, Star, Clock, Calendar, Trash2, RefreshCw, ExternalLink, Loader2, X, Heart, Bookmark, Plus
 } from 'lucide-react'
-import { getMovie, deleteMovie, refreshArtwork } from '../lib/api'
+import { getMovie, deleteMovie, refreshArtwork, getLists, addToList, removeFromList, getMovieLists } from '../lib/api'
 import type { ArtworkItem } from '../lib/api'
 import CastCard from '../components/CastCard'
 import { formatDate, formatRuntime, getRating } from '../lib/utils'
@@ -19,6 +19,15 @@ export default function MovieDetail() {
 
   const [artTab, setArtTab] = useState<ArtTab>('posters')
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+  const [favId, setFavId] = useState<number | null>(null)
+  const [watchlistId, setWatchlistId] = useState<number | null>(null)
+  const [inFav, setInFav] = useState(false)
+  const [inWatch, setInWatch] = useState(false)
+  const [customLists, setCustomLists] = useState<{ id: number; name: string }[]>([])
+  const [movieListIds, setMovieListIds] = useState<number[]>([])
+  const [showListMenu, setShowListMenu] = useState(false)
+  const [listLoading, setListLoading] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   const { data: movie, isLoading, isError } = useQuery({
     queryKey: ['movie', movieId],
@@ -40,6 +49,85 @@ export default function MovieDetail() {
       qc.invalidateQueries({ queryKey: ['movie', movieId] })
     },
   })
+
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const l = await getLists()
+        const fav = l.find((x) => x.list_type === 'favorites')
+        const watch = l.find((x) => x.list_type === 'watchlist')
+        if (fav) setFavId(fav.id)
+        if (watch) setWatchlistId(watch.id)
+        setCustomLists(l.filter((x) => x.list_type === 'custom').map((x) => ({ id: x.id, name: x.name })))
+      } catch (err) {
+        console.error('Failed to load lists:', err)
+      }
+    })()
+  }, [])
+
+  useEffect(() => {
+    if (!favId || !watchlistId || !movie) return
+    ;(async () => {
+      try {
+        const result = await getMovieLists(movieId)
+        setInFav(result.list_ids.includes(favId))
+        setInWatch(result.list_ids.includes(watchlistId))
+        setMovieListIds(result.list_ids)
+      } catch (err) {
+        console.error('Failed to check lists:', err)
+      }
+    })()
+  }, [favId, watchlistId, movieId, movie])
+
+  async function handleAddFavorite() {
+    if (!favId) return
+    setListLoading(true)
+    try {
+      if (inFav) {
+        await removeFromList(favId, movieId)
+        setInFav(false)
+      } else {
+        await addToList(favId, movieId)
+        setInFav(true)
+      }
+      qc.invalidateQueries({ queryKey: ['movie', movieId] })
+    } finally {
+      setListLoading(false)
+    }
+  }
+
+  async function handleAddWatchlist() {
+    if (!watchlistId) return
+    setListLoading(true)
+    try {
+      if (inWatch) {
+        await removeFromList(watchlistId, movieId)
+        setInWatch(false)
+      } else {
+        await addToList(watchlistId, movieId)
+        setInWatch(true)
+      }
+      qc.invalidateQueries({ queryKey: ['movie', movieId] })
+    } finally {
+      setListLoading(false)
+    }
+  }
+
+  async function handleToggleCustomList(listId: number) {
+    setListLoading(true)
+    try {
+      if (movieListIds.includes(listId)) {
+        await removeFromList(listId, movieId)
+        setMovieListIds(movieListIds.filter((id) => id !== listId))
+      } else {
+        await addToList(listId, movieId)
+        setMovieListIds([...movieListIds, listId])
+      }
+      qc.invalidateQueries({ queryKey: ['movie', movieId] })
+    } finally {
+      setListLoading(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -207,7 +295,69 @@ export default function MovieDetail() {
               )}
 
               {/* Actions */}
-              <div className="flex items-center gap-3 mt-5">
+              <div className="flex flex-wrap items-center gap-2 mt-5">
+                <button
+                  onClick={handleAddFavorite}
+                  disabled={listLoading || !favId}
+                  title={inFav ? 'Remove from Favorites' : 'Add to Favorites'}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors text-sm font-medium ${
+                    inFav
+                      ? 'bg-red-500/20 text-red-400 border-red-500/50'
+                      : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 border-slate-300 dark:border-slate-700'
+                  } disabled:opacity-50`}
+                >
+                  <Heart className="w-4 h-4" />
+                  {inFav ? 'Favorited' : 'Favorite'}
+                </button>
+
+                <button
+                  onClick={handleAddWatchlist}
+                  disabled={listLoading || !watchlistId}
+                  title={inWatch ? 'Remove from Watchlist' : 'Add to Watchlist'}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors text-sm font-medium ${
+                    inWatch
+                      ? 'bg-blue-500/20 text-blue-400 border-blue-500/50'
+                      : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 border-slate-300 dark:border-slate-700'
+                  } disabled:opacity-50`}
+                >
+                  <Bookmark className="w-4 h-4" />
+                  {inWatch ? 'In Watchlist' : 'Watchlist'}
+                </button>
+
+                {/* Custom lists dropdown */}
+                <div className="relative" ref={menuRef}>
+                  <button
+                    onClick={() => setShowListMenu(!showListMenu)}
+                    disabled={listLoading || customLists.length === 0}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-700 transition-colors disabled:opacity-50"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Lists
+                  </button>
+
+                  {showListMenu && customLists.length > 0 && (
+                    <div className="absolute top-full mt-2 left-0 bg-slate-800 dark:bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-50 min-w-48">
+                      {customLists.map((list) => (
+                        <button
+                          key={list.id}
+                          onClick={() => handleToggleCustomList(list.id)}
+                          className="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-700 transition-colors flex items-center gap-2 first:rounded-t-lg last:rounded-b-lg"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={movieListIds.includes(list.id)}
+                            onChange={() => {}}
+                            className="w-4 h-4"
+                          />
+                          <span>{list.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1" />
+
                 <button
                   onClick={() => refreshMutation.mutate()}
                   disabled={refreshMutation.isPending}
