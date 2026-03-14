@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.6.3] - 2026-03-13
+
+### Fixed
+- **JWT token encoding** — Convert user ID to string in JWT "sub" claim (PyJWT 2.8+ requires RFC 7519 compliance)
+- Fixes 401 authentication errors when accessing protected endpoints like Lists
+
 ## [1.6.2] - 2026-03-13
 
 ### Fixed
