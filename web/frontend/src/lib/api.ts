@@ -337,6 +337,7 @@ export interface UserList {
 export interface MovieInList {
   id: number
   tmdb_id: number
+  imdb_id?: string
   title: string
   rating?: number
   content_rating?: string

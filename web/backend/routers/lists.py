@@ -35,6 +35,7 @@ class ListResponse(BaseModel):
 class MovieInListResponse(BaseModel):
     id: int
     tmdb_id: int
+    imdb_id: Optional[str]
     title: str
     rating: Optional[float]
     content_rating: Optional[str]
@@ -111,6 +112,7 @@ def get_list(
                     in [
                         "id",
                         "tmdb_id",
+                        "imdb_id",
                         "title",
                         "rating",
                         "content_rating",

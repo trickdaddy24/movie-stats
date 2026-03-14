@@ -18,13 +18,15 @@ export default function ListDetail() {
   const [deleting, setDeleting] = useState(false)
 
   function exportAsCSV(listName: string, movies: MovieInList[]) {
-    const headers = ['Title', 'Year', 'Rating', 'Content Rating', 'Runtime', 'Genres']
+    const headers = ['Title', 'Year', 'Rating', 'Content Rating', 'Runtime', 'TMDB ID', 'IMDb ID', 'Genres']
     const rows = movies.map((m) => [
       `"${m.title.replace(/"/g, '""')}"`,
       formatYear(m.release_date) || '',
       m.rating ? m.rating.toFixed(1) : '',
       m.content_rating || '',
       formatRuntimeLong(m.runtime) || '',
+      m.tmdb_id || '',
+      m.imdb_id || '',
       `"${m.genres?.join(', ') || ''}"`,
     ])
 
@@ -47,6 +49,8 @@ export default function ListDetail() {
         rating: m.rating,
         contentRating: m.content_rating,
         runtime: formatRuntimeLong(m.runtime),
+        tmdbId: m.tmdb_id,
+        imdbId: m.imdb_id,
         genres: m.genres,
         releaseDate: m.release_date,
       })),
