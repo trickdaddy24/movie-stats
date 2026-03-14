@@ -96,8 +96,7 @@ def setup_db():
                 name TEXT NOT NULL,
                 list_type TEXT NOT NULL DEFAULT 'custom',
                 description TEXT,
-                created_at TEXT DEFAULT (datetime('now')),
-                UNIQUE(user_id, list_type)
+                created_at TEXT DEFAULT (datetime('now'))
             );
 
             CREATE TABLE IF NOT EXISTS user_list_movies (
@@ -130,6 +129,34 @@ def setup_db():
             conn.execute("ALTER TABLE import_sessions ADD COLUMN user_id INTEGER REFERENCES users(id)")
         except Exception:
             pass
+
+        # Migration: Remove UNIQUE constraint from user_lists to allow multiple custom lists
+        # The old constraint UNIQUE(user_id, list_type) prevented multiple custom lists
+        try:
+            # Check if the table exists and has the problematic constraint
+            tables = conn.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='user_lists'"
+            ).fetchone()
+            if tables and tables[0] and "UNIQUE(user_id, list_type)" in tables[0]:
+                # Rebuild the table without the constraint
+                conn.execute("""
+                    CREATE TABLE user_lists_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        name TEXT NOT NULL,
+                        list_type TEXT NOT NULL DEFAULT 'custom',
+                        description TEXT,
+                        created_at TEXT DEFAULT (datetime('now'))
+                    )
+                """)
+                conn.execute("""
+                    INSERT INTO user_lists_new
+                    SELECT id, user_id, name, list_type, description, created_at FROM user_lists
+                """)
+                conn.execute("DROP TABLE user_lists")
+                conn.execute("ALTER TABLE user_lists_new RENAME TO user_lists")
+        except Exception:
+            pass  # Migration already applied or table doesn't exist
 
 
 @contextmanager

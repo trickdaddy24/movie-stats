@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.6.9] - 2026-03-13
+
+### Fixed
+- **Custom lists creation** — Removed `UNIQUE(user_id, list_type)` database constraint that prevented multiple custom lists per user (all custom lists shared the same list_type='custom' value, causing UNIQUE constraint violations). Migration automatically rebuilds the table for existing databases.
+
 ## [1.6.8] - 2026-03-13
 
 ### Added

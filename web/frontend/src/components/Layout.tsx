@@ -6,7 +6,7 @@ import { getKeyStatus } from '../lib/api'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 
-const VERSION = '1.6.8'
+const VERSION = '1.6.9'
 
 function KeyStatusDot() {
   const { data: keys } = useQuery({ queryKey: ['settings-keys'], queryFn: getKeyStatus })
