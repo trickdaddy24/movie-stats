@@ -52,7 +52,7 @@ export default function Settings() {
 
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Version</p>
-            <p className="text-sm text-slate-300">v1.7.0</p>
+            <p className="text-sm text-slate-300">v1.7.1</p>
           </div>
 
           <div>
