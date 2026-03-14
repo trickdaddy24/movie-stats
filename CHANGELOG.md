@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.6.7] - 2026-03-13
+
+### Added
+- **List management on MovieDetail page** — Favorites, Watchlist, and custom lists buttons in movie details header
+- Same functionality as Library view for adding/removing movies from lists
+
 ## [1.6.6] - 2026-03-13
 
 ### Added
