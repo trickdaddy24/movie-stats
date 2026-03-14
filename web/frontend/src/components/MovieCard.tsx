@@ -1,7 +1,9 @@
-import { useNavigate } from 'react-router-dom'
-import { Star } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useNavigate, useQueryClient } from 'react-router-dom'
+import { Star, Heart, Bookmark, Loader2 } from 'lucide-react'
 import type { Movie } from '../lib/api'
 import { formatYear } from '../lib/utils'
+import { getLists, addToList, removeFromList, getMovieLists } from '../lib/api'
 
 interface Props {
   movie: Movie
@@ -9,6 +11,77 @@ interface Props {
 
 export default function MovieCard({ movie }: Props) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [lists, setLists] = useState<{ id: number; list_type: string }[]>([])
+  const [favId, setFavId] = useState<number | null>(null)
+  const [watchlistId, setWatchlistId] = useState<number | null>(null)
+  const [inFav, setInFav] = useState(false)
+  const [inWatch, setInWatch] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const l = await getLists()
+        const fav = l.find((x) => x.list_type === 'favorites')
+        const watch = l.find((x) => x.list_type === 'watchlist')
+        if (fav) setFavId(fav.id)
+        if (watch) setWatchlistId(watch.id)
+        setLists(l)
+      } catch (err) {
+        console.error('Failed to load lists:', err)
+      }
+    })()
+  }, [])
+
+  useEffect(() => {
+    if (!favId || !watchlistId) return
+    ;(async () => {
+      try {
+        const result = await getMovieLists(movie.id)
+        setInFav(result.list_ids.includes(favId))
+        setInWatch(result.list_ids.includes(watchlistId))
+      } catch (err) {
+        console.error('Failed to check lists:', err)
+      }
+    })()
+  }, [favId, watchlistId, movie.id])
+
+  async function handleAddFavorite(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!favId) return
+    setLoading(true)
+    try {
+      if (inFav) {
+        await removeFromList(favId, movie.id)
+        setInFav(false)
+      } else {
+        await addToList(favId, movie.id)
+        setInFav(true)
+      }
+      queryClient.invalidateQueries({ queryKey: ['movies'] })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleAddWatchlist(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!watchlistId) return
+    setLoading(true)
+    try {
+      if (inWatch) {
+        await removeFromList(watchlistId, movie.id)
+        setInWatch(false)
+      } else {
+        await addToList(watchlistId, movie.id)
+        setInWatch(true)
+      }
+      queryClient.invalidateQueries({ queryKey: ['movies'] })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const poster =
     movie.poster_url ||
@@ -65,15 +138,17 @@ export default function MovieCard({ movie }: Props) {
       </div>
 
       {/* Info */}
-      <div className="p-3">
-        <h3 className="font-semibold text-sm text-slate-100 line-clamp-2 leading-snug">
-          {movie.title}
-        </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">{formatYear(movie.release_date)}</p>
+      <div className="p-3 space-y-2">
+        <div>
+          <h3 className="font-semibold text-sm text-slate-100 line-clamp-2 leading-snug">
+            {movie.title}
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">{formatYear(movie.release_date)}</p>
+        </div>
 
         {/* Genres */}
         {movie.genres && movie.genres.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
+          <div className="flex flex-wrap gap-1">
             {movie.genres.slice(0, 2).map((g) => (
               <span
                 key={g}
@@ -89,6 +164,34 @@ export default function MovieCard({ movie }: Props) {
             )}
           </div>
         )}
+
+        {/* List buttons */}
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={handleAddFavorite}
+            disabled={loading || !favId}
+            title={inFav ? 'Remove from Favorites' : 'Add to Favorites'}
+            className={`flex-1 flex items-center justify-center gap-1 text-xs font-medium py-1.5 rounded transition-colors ${
+              inFav
+                ? 'bg-red-500/20 text-red-400 border border-red-500/50'
+                : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700'
+            } disabled:opacity-50`}
+          >
+            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Heart className="w-3 h-3" />}
+          </button>
+          <button
+            onClick={handleAddWatchlist}
+            disabled={loading || !watchlistId}
+            title={inWatch ? 'Remove from Watchlist' : 'Add to Watchlist'}
+            className={`flex-1 flex items-center justify-center gap-1 text-xs font-medium py-1.5 rounded transition-colors ${
+              inWatch
+                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
+                : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700'
+            } disabled:opacity-50`}
+          >
+            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bookmark className="w-3 h-3" />}
+          </button>
+        </div>
       </div>
     </div>
   )
