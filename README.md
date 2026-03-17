@@ -3,13 +3,11 @@
 </p>
 
 <p align="center">
-
-![Version](https://img.shields.io/badge/version-1.8.0-6366f1?style=flat-square)
-![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?style=flat-square&logo=fastapi&logoColor=white)
-![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)
-![License](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)
-
+  <img src="https://img.shields.io/badge/version-1.8.0-6366f1?style=flat-square" alt="Version" />
+  <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/FastAPI-0.110%2B-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="License" />
 </p>
 
 > A personal movie library powered by **TMDB** and **fanart.tv** — search any film, save it to your local collection, and explore rich metadata, HD artwork, cast, crew, and more through a sleek dark web UI.
